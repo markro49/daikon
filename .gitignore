@@ -60,6 +60,7 @@ java/daikon/chicory/ChicoryTest.inv.gz
 java/daikon/chicory/ChicoryTest.inv.out
 java/daikon/chicory/ChicoryTest.inv.out.diff
 java/daikon/chicory/ChicoryTest.log
+java/daikon/chicory/debug/
 
 # Obtained via Git
 utils

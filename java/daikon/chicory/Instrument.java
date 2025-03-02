@@ -74,7 +74,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
   /** Debug information about which classes are transformed and why. */
   public static SimpleLog debug_transform = new SimpleLog(false);
 
-  /** Binary name for the current class. */
+  /** Current class name in binary format. */
   @BinaryName String binaryClassName;
 
   /** Create a new Instrument. Sets up debug logging. */
@@ -205,7 +205,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
     }
 
     // Don't instrument our own code
-    if (is_chicory(className)) {
+    if (isChicory(className)) {
       debug_transform.log("Not considering chicory class %s%n", binaryClassName);
       return null;
     }
@@ -246,7 +246,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
 
       // Convert reach non-void method to save its result in a local
       // before returning
-      ClassInfo c_info = instrument_all_methods(cg, binaryClassName, loader);
+      ClassInfo classInfo = instrument_all_methods(cg, binaryClassName, loader);
 
       // get constant static fields!
       Field[] fields = cg.getFields();
@@ -266,7 +266,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
           }
 
           if (valString != null) {
-            c_info.staticMap.put(field.getName(), valString);
+            classInfo.staticMap.put(field.getName(), valString);
           }
         }
       }
@@ -288,7 +288,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
 
       JavaClass njc = cg.getJavaClass();
 
-      if (c_info.shouldInclude) {
+      if (classInfo.shouldInclude) {
         if (Chicory.dump) {
           try {
             debugInstrument.log("Dumping %s to %s%n", binaryClassName, debug_bin_dir);
@@ -429,7 +429,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
   }
 
   /**
-   * Create the InstructionList for a call to {@code initNotify}.
+   * Create the list of instructions for a call to {@code initNotify}.
    *
    * @param cp ConstantPoolGen for current class
    * @param fullClassName the fully-qualified class name
@@ -439,10 +439,10 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
   private InstructionList call_initNotify(
       ConstantPoolGen cp, String fullClassName, InstructionFactory factory) {
 
-    InstructionList invokeList = new InstructionList();
+    InstructionList instructions = new InstructionList();
 
-    invokeList.append(new PUSH(cp, fullClassName));
-    invokeList.append(
+    instructions.append(new PUSH(cp, fullClassName));
+    instructions.append(
         factory.createInvoke(
             runtime_classname,
             "initNotify",
@@ -450,8 +450,8 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
             new Type[] {Type.STRING},
             Const.INVOKESTATIC));
 
-    // System.out.println(fullClassName + " --- " + invokeList.size());
-    return invokeList;
+    // System.out.println(fullClassName + " --- " + instructions.size());
+    return instructions;
   }
 
   /**
@@ -467,7 +467,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
    */
   private ClassInfo instrument_all_methods(ClassGen cg, String fullClassName, ClassLoader loader) {
 
-    ClassInfo class_info = new ClassInfo(cg.getClassName(), loader);
+    ClassInfo classInfo = new ClassInfo(cg.getClassName(), loader);
     List<MethodInfo> method_infos = new ArrayList<>();
 
     if (cg.getMajor() < Const.MAJOR_1_6) {
@@ -546,11 +546,11 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
           // Create a MethodInfo that describes this methods arguments
           // and exit line numbers (information not available via reflection)
           // and add it to the list for this class.
-          MethodInfo mi = create_method_info(class_info, mg);
+          MethodInfo curMethodInfo = create_method_info(classInfo, mg);
 
           printStackMapTable("After create_method_info");
 
-          if (mi == null) { // method filtered out!
+          if (curMethodInfo == null) { // method filtered out!
             continue;
           }
 
@@ -565,11 +565,11 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
           // unchanged throught the instrumentaion process.
           buildUninitializedNewMap(il);
 
-          method_infos.add(mi);
+          method_infos.add(curMethodInfo);
 
           synchronized (SharedData.methods) {
             cur_method_info_index = SharedData.methods.size();
-            SharedData.methods.add(mi);
+            SharedData.methods.add(curMethodInfo);
           }
 
           // Add nonce local to matchup enter/exits
@@ -584,8 +584,8 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
           // the amount of the switch padding changed.
           modifyStackMapsForSwitches(il.getStart(), il);
 
-          Iterator<Boolean> shouldIncIter = mi.is_included.iterator();
-          Iterator<Integer> exitIter = mi.exit_locations.iterator();
+          Iterator<Boolean> shouldIncIter = curMethodInfo.is_included.iterator();
+          Iterator<Integer> exitIter = curMethodInfo.exit_locations.iterator();
 
           // Loop through each instruction looking for the return(s)
           for (InstructionHandle ih = il.getStart(); ih != null; ) {
@@ -652,28 +652,28 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
 
     // Add the class and method information to runtime so it is available
     // as enter/exit ppts are processed.
-    class_info.set_method_infos(method_infos);
+    classInfo.set_method_infos(method_infos);
 
     if (shouldInclude) {
-      debug_transform.log("Added trace info to class %s%n", class_info);
+      debug_transform.log("Added trace info to class %s%n", classInfo);
       synchronized (SharedData.new_classes) {
-        SharedData.new_classes.add(class_info);
+        SharedData.new_classes.add(classInfo);
       }
       synchronized (SharedData.all_classes) {
-        SharedData.all_classes.add(class_info);
+        SharedData.all_classes.add(classInfo);
       }
     } else { // not included
-      debug_transform.log("Trace info not added to class %s%n", class_info);
+      debug_transform.log("Trace info not added to class %s%n", classInfo);
     }
 
-    class_info.shouldInclude = shouldInclude;
-    return class_info;
+    classInfo.shouldInclude = shouldInclude;
+    return classInfo;
   }
 
   /**
-   * If this is a return instruction, generate new instruction list to assign the result to a local
-   * variable (return__$trace2_val) and then call daikon.chicory.Runtime.exit(). This instruction
-   * list wil be inserted immediately before the return.
+   * If this is a return instruction, generate a new instruction list to assign the result to a
+   * local variable (return__$trace2_val) and then call daikon.chicory.Runtime.exit(). This
+   * instruction list wil be inserted immediately before the return.
    *
    * @param inst the instruction to inspect, which might be a return instruction
    * @param c MethodContext for current method
@@ -711,19 +711,19 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
     }
 
     Type type = c.mgen.getReturnType();
-    InstructionList il = new InstructionList();
+    InstructionList newCode = new InstructionList();
     if (type != Type.VOID) {
       LocalVariableGen return_loc = get_return_local(c.mgen, type);
-      il.append(InstructionFactory.createDup(type.getSize()));
-      il.append(InstructionFactory.createStore(type, return_loc.getIndex()));
+      newCode.append(InstructionFactory.createDup(type.getSize()));
+      newCode.append(InstructionFactory.createStore(type, return_loc.getIndex()));
     }
 
     if (!exitIter.hasNext()) {
       throw new RuntimeException("Not enough exit locations in the exitIter");
     }
 
-    il.append(call_enter_exit(c, "exit", exitIter.next()));
-    return il;
+    newCode.append(callEnterOrExit(c, "exit", exitIter.next()));
+    return newCode;
   }
 
   /**
@@ -795,7 +795,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
     String atomic_int_classname = "java.util.concurrent.atomic.AtomicInteger";
     Type atomic_int_type = new ObjectType(atomic_int_classname);
 
-    InstructionList nl = new InstructionList();
+    InstructionList newCode = new InstructionList();
 
     // create the nonce local variable
     LocalVariableGen nonce_lv =
@@ -811,26 +811,26 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
     //     this_invocation_nonce = Runtime.nonce++;
 
     // getstatic Runtime.nonce (load reference to AtomicInteger daikon.chicory.Runtime.nonce)
-    nl.append(c.ifact.createGetStatic(runtime_classname, "nonce", atomic_int_type));
+    newCode.append(c.ifact.createGetStatic(runtime_classname, "nonce", atomic_int_type));
 
     // do an atomic get and increment of nonce value
     // this is multi-thread safe and leaves int value of nonce on stack
-    nl.append(
+    newCode.append(
         c.ifact.createInvoke(
             atomic_int_classname, "getAndIncrement", Type.INT, new Type[] {}, Const.INVOKEVIRTUAL));
 
     // istore <lv> (pop original value of nonce into this_invocation_nonce)
-    nl.append(InstructionFactory.createStore(Type.INT, nonce_lv.getIndex()));
+    newCode.append(InstructionFactory.createStore(Type.INT, nonce_lv.getIndex()));
 
-    nl.setPositions();
-    InstructionHandle end = nl.getEnd();
+    newCode.setPositions();
+    InstructionHandle end = newCode.getEnd();
     int len_part1 = end.getPosition() + end.getInstruction().getLength();
 
     // call Runtime.enter()
-    nl.append(call_enter_exit(c, "enter", -1));
+    newCode.append(callEnterOrExit(c, "enter", -1));
 
-    nl.setPositions();
-    end = nl.getEnd();
+    newCode.setPositions();
+    end = newCode.getEnd();
     int len_part2 = end.getPosition() + end.getInstruction().getLength() - len_part1;
 
     // Add the new instructions at the start and move any LineNumbers
@@ -839,7 +839,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
     // NOTE: Don't use insert_at_method_start as it tries to update StackMaps
     // and that will be done with special code below.
     InstructionHandle old_start = il.getStart();
-    InstructionHandle new_start = il.insert(nl);
+    InstructionHandle new_start = il.insert(newCode);
     for (InstructionTargeter it : old_start.getTargeters()) {
       if ((it instanceof LineNumberGen) || (it instanceof LocalVariableGen)) {
         it.updateTarget(old_start, new_start);
@@ -922,7 +922,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
    * @param line source line number if this is an exit
    * @return instruction list for instrumenting the enter or exit of the method
    */
-  private InstructionList call_enter_exit(MethodContext c, String method_name, int line) {
+  private InstructionList callEnterOrExit(MethodContext c, String method_name, int line) {
 
     InstructionList il = new InstructionList();
     InstructionFactory ifact = c.ifact;
@@ -937,11 +937,8 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
       il.append(InstructionFactory.createLoad(Type.OBJECT, 0));
     }
 
-    // Determine the offset of the first parameter
-    int param_offset = 1;
-    if (mg.isStatic()) {
-      param_offset = 0;
-    }
+    // The offset of the first parameter.
+    int param_offset = mg.isStatic() ? 0 : 1;
 
     // iload
     // Push the nonce
@@ -1111,12 +1108,12 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
   /**
    * Creates a MethodInfo struct corresponding to {@code mgen}.
    *
-   * @param class_info a class
+   * @param classInfo a class
    * @param mgen a method in the given class
    * @return a new MethodInfo for the method, or null if the method should not be instrumented
    */
   @SuppressWarnings("unchecked")
-  private @Nullable MethodInfo create_method_info(ClassInfo class_info, MethodGen mgen) {
+  private @Nullable MethodInfo create_method_info(ClassInfo classInfo, MethodGen mgen) {
 
     // Get the argument names for this method
     String[] arg_names = mgen.getArgumentNames();
@@ -1138,10 +1135,11 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
     // parameter names appropriately.  This check is ugly.
     if (mgen.getName().equals("<init>") && mgen.getArgumentTypes().length > 0) {
       int dollarPos = mgen.getClassName().lastIndexOf("$");
+      String arg0Name = mgen.getArgumentType(0).toString();
       if (dollarPos >= 0
           &&
           // type of first parameter is classname up to the "$"
-          mgen.getClassName().substring(0, dollarPos).equals(mgen.getArgumentType(0).toString())) {
+          mgen.getClassName().substring(0, dollarPos).equals(arg0Name)) {
         // As a further check, for javac-generated classfiles, the
         // constant pool index #1 is "this$0", and the first 5 bytes of
         // the bytecode are:
@@ -1150,7 +1148,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
         //   2: putfield      #1
 
         lv_start++;
-        arg_names[0] = mgen.getArgumentType(0).toString() + ".this";
+        arg_names[0] = arg0Name + ".this";
       }
     }
 
@@ -1173,10 +1171,10 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
 
     // see if we should track the entry point
     if (!shouldIgnore(
-        class_info.class_name,
+        classInfo.class_name,
         mgen.getName(),
         DaikonWriter.methodEntryName(
-            class_info.class_name, getArgTypes(mgen), mgen.toString(), mgen.getName()))) {
+            classInfo.class_name, getArgTypes(mgen), mgen.toString(), mgen.getName()))) {
       shouldInclude = true;
     }
     // Get the argument types for this method
@@ -1231,10 +1229,10 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
           last_line_number = line_number;
 
           if (!shouldIgnore(
-              class_info.class_name,
+              classInfo.class_name,
               mgen.getName(),
               DaikonWriter.methodExitName(
-                  class_info.class_name,
+                  classInfo.class_name,
                   getArgTypes(mgen),
                   mgen.toString(),
                   mgen.getName(),
@@ -1256,7 +1254,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
 
     if (shouldInclude) {
       return new MethodInfo(
-          class_info, mgen.getName(), arg_names, arg_type_strings, exit_locs, isIncluded);
+          classInfo, mgen.getName(), arg_names, arg_type_strings, exit_locs, isIncluded);
     } else {
       return null;
     }
@@ -1300,14 +1298,14 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
   }
 
   /**
-   * Returns whether or not the specified class is part of Chicory itself (and thus should not be
+   * Returns true if the specified class is part of Chicory itself (and thus should not be
    * instrumented). Some Daikon classes that are used by Chicory are included here as well.
    *
    * @param classname the name of the class to test, in internal form
    * @return true if the given class is part of Chicory itself
    */
   @Pure
-  private static boolean is_chicory(@InternalForm String classname) {
+  private static boolean isChicory(@InternalForm String classname) {
 
     if (classname.startsWith("daikon/chicory") && !classname.equals("daikon/chicory/ChicoryTest")) {
       return true;

@@ -24,6 +24,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -228,6 +229,7 @@ public class Instrument24 implements ClassFileTransformer {
       throws IllegalClassFormatException {
 
     // convert internal form to binary name
+    // TODO: replace by Signatures.internalFormToBinaryName(className);
     binaryClassName = className.replace("/", ".");
 
     // for debugging
@@ -269,7 +271,7 @@ public class Instrument24 implements ClassFileTransformer {
     }
 
     // Don't instrument our own code
-    if (is_chicory(className)) {
+    if (isChicory(className)) {
       debug_transform.log("Not considering chicory class %s%n", binaryClassName);
       return null;
     }
@@ -467,20 +469,20 @@ public class Instrument24 implements ClassFileTransformer {
   }
 
   /**
-   * Create the List of CodeElements for a call to {@code initNotify}.
+   * Create the list of instructions for a call to {@code initNotify}.
    *
    * @return the instruction list
    */
   private List<CodeElement> call_initNotify() {
 
-    List<CodeElement> codeList = new ArrayList<>();
+    List<CodeElement> instructions = new ArrayList<>();
 
     MethodRefEntry mre =
         poolBuilder.methodRefEntry(runtimeCD, "initNotify", MethodTypeDesc.of(CD_void, CD_String));
-    codeList.add(buildLDCInstruction(poolBuilder.stringEntry(binaryClassName)));
-    codeList.add(InvokeInstruction.of(Opcode.INVOKESTATIC, mre));
+    instructions.add(buildLDCInstruction(poolBuilder.stringEntry(binaryClassName)));
+    instructions.add(InvokeInstruction.of(Opcode.INVOKESTATIC, mre));
 
-    return codeList;
+    return instructions;
   }
 
   /**
@@ -833,9 +835,9 @@ public class Instrument24 implements ClassFileTransformer {
   }
 
   /**
-   * If this is a return instruction, generate new il to assign the result to a local variable
-   * (return__$trace2_val) and then call daikon.chicory.Runtime.exit(). This il wil be inserted
-   * immediately before the return.
+   * If this is a return instruction, generate a new instruction list to assign the result to a
+   * local variable (return__$trace2_val) and then call daikon.chicory.Runtime.exit(). This
+   * instruction list wil be inserted immediately before the return.
    *
    * @param inst the instruction to inspect
    * @param mgen MethodGen24 for method
@@ -849,9 +851,8 @@ public class Instrument24 implements ClassFileTransformer {
       Iterator<Boolean> shouldIncIter,
       Iterator<Integer> exitIter) {
 
-    List<CodeElement> newCode = new ArrayList<>();
     if (!(inst instanceof ReturnInstruction)) {
-      return newCode;
+      return Collections.emptyList();
     }
 
     if (!shouldIncIter.hasNext()) {
@@ -861,9 +862,10 @@ public class Instrument24 implements ClassFileTransformer {
     boolean shouldInclude = shouldIncIter.next();
 
     if (!shouldInclude) {
-      return newCode;
+      return Collections.emptyList();
     }
 
+    List<CodeElement> newCode = new ArrayList<>();
     ClassDesc type = mgen.getReturnType();
     if (!type.equals(CD_void)) {
       TypeKind typeKind = TypeKind.from(type);
@@ -880,7 +882,7 @@ public class Instrument24 implements ClassFileTransformer {
       throw new RuntimeException("Not enough exit locations in the exitIter");
     }
 
-    call_enter_exit(newCode, mgen, "exit", exitIter.next());
+    callEnterOrExit(newCode, mgen, "exit", exitIter.next());
     return newCode;
   }
 
@@ -947,7 +949,7 @@ public class Instrument24 implements ClassFileTransformer {
     // store original value of nonce into this_invocation_nonce)
     newCode.add(StoreInstruction.of(TypeKind.INT, nonceLocal.slot()));
 
-    call_enter_exit(newCode, mgen, "enter", -1);
+    callEnterOrExit(newCode, mgen, "enter", -1);
 
     // The start of the list of CodeElements looks as follows:
     //   LocalVariable declarations (if any)
@@ -997,7 +999,7 @@ public class Instrument24 implements ClassFileTransformer {
    * @param callMethod either "enter" or "exit"
    * @param line source line number if this is an exit
    */
-  private void call_enter_exit(
+  private void callEnterOrExit(
       List<CodeElement> newCode, MethodGen24 mgen, String callMethod, int line) {
 
     ClassDesc[] arg_types = mgen.getParameterTypes();
@@ -1010,11 +1012,8 @@ public class Instrument24 implements ClassFileTransformer {
       newCode.add(LoadInstruction.of(TypeKind.REFERENCE, 0));
     }
 
-    // Determine the offset of the first parameter
-    int param_offset = 1;
-    if (mgen.isStatic()) {
-      param_offset = 0;
-    }
+    // The offset of the first parameter.
+    int param_offset = mgen.isStatic() ? 0 : 1;
 
     // Assumes add_entry_instrumentation has been called which sets nonceLocal.
     // iload
@@ -1420,7 +1419,7 @@ public class Instrument24 implements ClassFileTransformer {
    * @return true if the given class is part of Chicory itself
    */
   @Pure
-  private static boolean is_chicory(@InternalForm String classname) {
+  private static boolean isChicory(@InternalForm String classname) {
 
     if (classname.startsWith("daikon/chicory") && !classname.equals("daikon/chicory/ChicoryTest")) {
       return true;
