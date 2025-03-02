@@ -843,8 +843,9 @@ public class Instrument24 implements ClassFileTransformer {
    * @param mgen MethodGen24 for method
    * @param shouldIncIter whether or not to instrument this return
    * @param exitIter list of exit line numbers
-   * @return instruction list for instrumenting the return
+   * @return instruction list for instrumenting the return, which may be empty
    */
+  @SuppressWarnings("MixedMutabilityReturnType")
   private @Nullable List<CodeElement> generate_return_instrumentation(
       CodeElement inst,
       MethodGen24 mgen,
