@@ -19,6 +19,8 @@ import java.util.List;
 import java.util.Optional;
 import org.checkerframework.checker.lock.qual.GuardSatisfied;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.checkerframework.checker.signature.qual.BinaryName;
+import org.checkerframework.checker.signature.qual.Identifier;
 
 /**
  * MethodGen24 collects and stores all the relevant information about a method that Instrument24

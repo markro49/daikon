@@ -5,6 +5,7 @@ import static java.lang.constant.ConstantDescs.*;
 
 import daikon.Chicory;
 import daikon.plumelib.bcelutil.SimpleLog;
+import daikon.plumelib.reflection.Signatures;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.lang.classfile.*;
@@ -37,6 +38,7 @@ import java.util.regex.Pattern;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.checker.signature.qual.BinaryName;
 import org.checkerframework.checker.signature.qual.ClassGetName;
+import org.checkerframework.checker.signature.qual.FieldDescriptor;
 import org.checkerframework.checker.signature.qual.InternalForm;
 import org.checkerframework.dataflow.qual.Pure;
 
@@ -1107,6 +1109,7 @@ public class Instrument24 implements ClassFileTransformer {
               ts.lowValue(), ts.highValue(), modifiedTarget, modifiedCaseList);
         }
       }
+      default -> {}
     }
     return inst;
   }
