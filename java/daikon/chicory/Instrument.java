@@ -47,6 +47,7 @@ import org.checkerframework.checker.signature.qual.BinaryName;
 import org.checkerframework.checker.signature.qual.ClassGetName;
 import org.checkerframework.checker.signature.qual.InternalForm;
 import org.checkerframework.dataflow.qual.Pure;
+import org.plumelib.reflection.Signatures;
 
 /**
  * The Instrument class is responsible for modifying another class's bytecodes. Specifically, its
@@ -59,10 +60,10 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
   /** Directory for debug output. */
   File debug_dir;
 
-  /** Directory for debug instrumented class output. */
+  /** Directory into which to dump debug-instrumented classes. */
   File debug_bin_dir;
 
-  /** Directory for debug original class output. */
+  /** Directory into which to dump original classes. */
   File debug_orig_dir;
 
   /** The index of this method in SharedData.methods. */
@@ -134,8 +135,8 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
       }
     }
 
-    // if we're here, this ppt not explicitly included or excluded
-    // so keep unless there were items in the "include only" list
+    // If we're here, this ppt is not explicitly included or excluded,
+    // so keep unless there were items in the "include only" list.
     if (Runtime.ppt_select_pattern.size() > 0) {
       debug_transform.log("ignoring %s, not included in ppt_select pattern(s)%n", pptName);
       return true;
@@ -160,25 +161,20 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
       byte[] classfileBuffer)
       throws IllegalClassFormatException {
 
-    // convert internal form to binary name
-    // TODO: replace by Signatures.internalFormToBinaryName(className);
-    binaryClassName = className.replace("/", ".");
+    binaryClassName = Signatures.internalFormToBinaryName(className);
 
     // for debugging
     // new Throwable().printStackTrace();
 
     debug_transform.log("In chicory.Instrument.transform(): class = %s%n", className);
 
-    // Don't instrument boot classes.  They are uninteresting and will
-    // not be able to access daikon.chicory.Runtime (because it is not
-    // on the boot classpath).  Previously this code skipped classes
-    // that started with java, com, javax, or sun, but this is not
-    // correct in many cases.  Most boot classes have the null loader,
-    // but some generated classes (such as those in sun.reflect) will
-    // have a non-null loader.  Some of these have a null parent loader,
-    // but some do not.  The check for the sun.reflect package is a hack
-    // to catch all of these.  A more consistent mechanism to determine
-    // boot classes would be preferrable.
+    // Don't instrument boot classes.  They are uninteresting and will not be able to access
+    // daikon.chicory.Runtime (because it is not on the boot classpath).  Previously this code
+    // skipped classes that started with java, com, javax, or sun, but this is not correct in many
+    // cases.  Most boot classes have the null loader, but some generated classes (such as those in
+    // sun.reflect) will have a non-null loader.  Some of these have a null parent loader, but some
+    // do not.  The check for the sun.reflect package is a hack to catch all of these.  A more
+    // consistent mechanism to determine boot classes would be preferrable.
     if (Chicory.boot_classes != null) {
       Matcher matcher = Chicory.boot_classes.matcher(binaryClassName);
       if (matcher.find()) {
@@ -931,7 +927,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
 
     // aload
     // Push the object.  Null if this is a static method or a constructor
-    if (mg.isStatic() || (method_name.equals("enter") && is_constructor(mg))) {
+    if (mg.isStatic() || (method_name.equals("enter") && isConstructor(mg))) {
       il.append(new ACONST_NULL());
     } else { // must be an instance method
       il.append(InstructionFactory.createLoad(Type.OBJECT, 0));
@@ -1070,7 +1066,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
    * @return true iff mgen is a constructor
    */
   @Pure
-  private boolean is_constructor(MethodGen mgen) {
+  private boolean isConstructor(MethodGen mgen) {
 
     if (mgen.getName().equals("<init>") || mgen.getName().equals("")) {
       debugInstrument.log("method '%s' is a constructor%n", mgen.getName());
