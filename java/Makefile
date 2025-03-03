@@ -864,7 +864,7 @@ audit:
 .PHONY: reformat check-format
 
 ifeq ($(JAVA24), 1)
-  extra-format-arg = ./daikon/chicory/*24.java ./daikon/dcomp/*24.java
+  extra-format-arg = ./daikon/chicory/*24.java
 endif
 
 reformat:
