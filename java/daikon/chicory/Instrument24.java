@@ -14,7 +14,9 @@ import java.lang.classfile.Opcode.*;
 import java.lang.classfile.attribute.*;
 import java.lang.classfile.constantpool.*;
 import java.lang.classfile.instruction.*;
-import java.lang.constant.*;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.ConstantDesc;
+import java.lang.constant.MethodTypeDesc;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
 import java.lang.invoke.MethodHandles;
@@ -566,7 +568,9 @@ public class Instrument24 implements ClassFileTransformer {
             String types = "", names = "", locals = "";
 
             for (int j = 0; j < paramTypes.length; j++) {
-              types = types + convertDescriptorToString(paramTypes[j].descriptorString()) + " ";
+              @SuppressWarnings("signature:assignment") // need JDK annotations
+              @FieldDescriptor String paramFD = paramTypes[j].descriptorString();
+              types = types + convertDescriptorToString(paramFD) + " ";
             }
             for (int j = 0; j < paramNames.length; j++) {
               names = names + paramNames[j] + " ";
@@ -803,8 +807,9 @@ public class Instrument24 implements ClassFileTransformer {
     for (LocalVariable lv : localsTable) {
       codeBuilder.localVariable(
           lv.slot(), lv.name().stringValue(), lv.typeSymbol(), lv.startScope(), lv.endScope());
-      debugInstrument.log(
-          "  %s : %s%n", lv, convertDescriptorToString(lv.typeSymbol().descriptorString()));
+      @SuppressWarnings("signature:assignment") // need JDK annotations
+      @FieldDescriptor String lvFD = lv.typeSymbol().descriptorString();
+      debugInstrument.log("  %s : %s%n", lv, convertDescriptorToString(lvFD));
     }
 
     // Copy the modified instruction list to the output class.
@@ -1292,7 +1297,9 @@ public class Instrument24 implements ClassFileTransformer {
     // parameter names appropriately.  This check is ugly.
     if (mgen.getName().equals("<init>") && mgen.getParameterTypes().length > 0) {
       int dollarPos = mgen.getClassName().lastIndexOf("$");
-      String arg0Name = convertDescriptorToString(mgen.getParameterType(0).descriptorString());
+      @SuppressWarnings("signature:assignment") // need JDK annotations
+      @FieldDescriptor String arg0Fd = mgen.getParameterType(0).descriptorString();
+      String arg0Name = convertDescriptorToString(arg0Fd);
       if (dollarPos >= 0
           &&
           // type of first parameter is classname up to the "$"
@@ -1460,7 +1467,9 @@ public class Instrument24 implements ClassFileTransformer {
     int arrayDimensions = 0;
     while (descriptor.charAt(0) == '[') {
       arrayDimensions++;
-      descriptor = descriptor.substring(1);
+      @SuppressWarnings("signature") // string manipulation
+      @FieldDescriptor String descriptorFd = descriptor.substring(1);
+      descriptor = descriptorFd;
     }
 
     // Convert primitive types
@@ -1542,6 +1551,7 @@ public class Instrument24 implements ClassFileTransformer {
    * @param genericPart the type parameter(s) to format
    * @return a formatted string
    */
+  @SuppressWarnings("signature") // string manipulation
   private static String parseGenericParameters(String genericPart) {
     StringBuilder result = new StringBuilder();
     int depth = 0;

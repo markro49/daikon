@@ -133,7 +133,9 @@ public class MethodGen24 {
    * @param inst_obj the daikon.chicory.Instrument instance
    */
   public MethodGen24(
-      final MethodModel methodModel, final String className, daikon.chicory.Instrument24 inst_obj) {
+      final MethodModel methodModel,
+      final @BinaryName String className,
+      daikon.chicory.Instrument24 inst_obj) {
 
     accessFlags = methodModel.flags();
     methodName = methodModel.methodName().stringValue();
@@ -208,7 +210,9 @@ public class MethodGen24 {
     int offset = isStatic ? 0 : 1;
     for (int i = 0; i < paramTypes.length; i++) {
       if ((offset + i) < localVariables.length) {
-        paramNames[i] = localVariables[offset + i].name().stringValue();
+        @SuppressWarnings("signature:assignment") // need JDK annotations
+        @Identifier String paramName = localVariables[offset + i].name().stringValue();
+        paramNames[i] = paramName;
       }
     }
   }
