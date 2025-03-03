@@ -1,6 +1,9 @@
 package daikon.chicory;
 
-// import static java.lang.constant.ConstantDescs.*;
+import static java.lang.constant.ConstantDescs.CD_Object;
+import static java.lang.constant.ConstantDescs.CD_String;
+import static java.lang.constant.ConstantDescs.CD_int;
+import static java.lang.constant.ConstantDescs.CD_void;
 
 import daikon.Chicory;
 import daikon.plumelib.bcelutil.SimpleLog;
