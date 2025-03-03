@@ -9,7 +9,6 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.lang.classfile.*;
 import java.lang.classfile.Attributes;
-import java.lang.classfile.Opcode.*;
 import java.lang.classfile.attribute.*;
 import java.lang.classfile.constantpool.*;
 import java.lang.classfile.instruction.*;
