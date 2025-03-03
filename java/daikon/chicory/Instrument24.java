@@ -1,7 +1,6 @@
 package daikon.chicory;
 
-import static java.lang.classfile.constantpool.PoolEntry.*;
-import static java.lang.constant.ConstantDescs.*;
+// import static java.lang.constant.ConstantDescs.*;
 
 import daikon.Chicory;
 import daikon.plumelib.bcelutil.SimpleLog;
