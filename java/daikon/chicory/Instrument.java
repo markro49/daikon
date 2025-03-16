@@ -59,18 +59,6 @@ import org.checkerframework.dataflow.qual.Pure;
  */
 public class Instrument extends InstructionListUtils implements ClassFileTransformer {
 
-  /** Directory for debug output. */
-  File debug_dir;
-
-  /** Directory into which to dump debug-instrumented classes. */
-  File debug_bin_dir;
-
-  /** Directory into which to dump original classes. */
-  File debug_orig_dir;
-
-  /** The index of this method in SharedData.methods. */
-  int cur_method_info_index = 0;
-
   /** The location of the runtime support class. */
   private static final String runtime_classname = "daikon.chicory.Runtime";
 
@@ -80,8 +68,19 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
   /** Debug information about ppt-omit and ppt-select. */
   public static SimpleLog debug_ppt = new SimpleLog(false);
 
+  /** Directory for debug output. */
+  File debug_dir;
+
+  /** Directory into which to dump debug-instrumented classes. */
+  File debug_instrumented_dir;
+
+  /** Directory into which to dump original classes. */
+  File debug_uninstrumented_dir;
+
+  /** The index of this method in SharedData.methods. */
+  int cur_method_info_index = 0;
+
   /** Create an instrumenter. Setup debug directories, if needed. */
-  @SuppressWarnings("nullness:initialization")
   public Instrument() {
     super();
     debug_transform.enabled = Chicory.debug_transform || Chicory.debug || Chicory.verbose;
@@ -89,12 +88,12 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
     debug_ppt.enabled = debugInstrument.enabled;
 
     debug_dir = Chicory.debug_dir;
-    debug_bin_dir = new File(debug_dir, "bin");
-    debug_orig_dir = new File(debug_dir, "orig");
+    debug_instrumented_dir = new File(debug_dir, "instrumented");
+    debug_uninstrumented_dir = new File(debug_dir, "uninstrumented");
 
     if (Chicory.dump) {
-      debug_bin_dir.mkdirs();
-      debug_orig_dir.mkdirs();
+      debug_instrumented_dir.mkdirs();
+      debug_uninstrumented_dir.mkdirs();
     }
   }
 
@@ -262,7 +261,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
     }
 
     if (Chicory.dump) {
-      outputDebugFiles(c, debug_orig_dir, binaryClassName);
+      outputDebugFiles(c, debug_uninstrumented_dir, binaryClassName);
     }
 
     // Instrument the classfile, die on any errors
@@ -324,7 +323,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
 
     if (classInfo.shouldInclude) {
       if (Chicory.dump) {
-        outputDebugFiles(njc, debug_bin_dir, binaryClassName);
+        outputDebugFiles(njc, debug_instrumented_dir, binaryClassName);
       }
       return njc.getBytes();
     } else {
