@@ -30,7 +30,6 @@ import java.lang.classfile.Opcode;
 import java.lang.classfile.TypeKind;
 import java.lang.classfile.attribute.CodeAttribute;
 import java.lang.classfile.attribute.ConstantValueAttribute;
-import java.lang.classfile.constantpool.ConstantPoolBuilder;
 import java.lang.classfile.constantpool.ConstantValueEntry;
 import java.lang.classfile.constantpool.MethodRefEntry;
 import java.lang.classfile.instruction.ArrayStoreInstruction;
@@ -133,9 +132,6 @@ public class Instrument24 implements ClassFileTransformer {
    * information.
    */
   private ClassInfo classInfo;
-
-  /** ConstantPool builder for entire class. */
-  private ConstantPoolBuilder poolBuilder;
 
   // Variables used for processing the current method.
   // They are initialized in instrumentCode().
@@ -407,9 +403,6 @@ public class Instrument24 implements ClassFileTransformer {
    */
   private void instrumentClass(ClassBuilder classBuilder, ClassModel classModel) {
 
-    // Save constant pool builder for later use.
-    poolBuilder = classBuilder.constantPool();
-
     debugInstrument.log("Class Attributes:%n");
     for (java.lang.classfile.Attribute<?> a : classModel.attributes()) {
       debugInstrument.log("  %s%n", a);
@@ -469,7 +462,7 @@ public class Instrument24 implements ClassFileTransformer {
         // Get the translation for this instruction (if any)
         if (inst instanceof ReturnInstruction) {
           // insert code prior to 'inst'
-          for (CodeElement ce : call_initNotify()) {
+          for (CodeElement ce : call_initNotify(mgen)) {
             li.add(ce);
           }
         }
@@ -488,13 +481,14 @@ public class Instrument24 implements ClassFileTransformer {
    *
    * @return the instruction list
    */
-  private List<CodeElement> call_initNotify() {
+  private List<CodeElement> call_initNotify(MethodGen24 mgen) {
 
     List<CodeElement> instructions = new ArrayList<>();
 
     MethodRefEntry mre =
-        poolBuilder.methodRefEntry(runtimeCD, "initNotify", MethodTypeDesc.of(CD_void, CD_String));
-    instructions.add(buildLDCInstruction(poolBuilder.stringEntry(classInfo.class_name)));
+        mgen.getPoolBuilder()
+            .methodRefEntry(runtimeCD, "initNotify", MethodTypeDesc.of(CD_void, CD_String));
+    instructions.add(buildLDCInstruction(mgen.getPoolBuilder().stringEntry(classInfo.class_name)));
     instructions.add(InvokeInstruction.of(Opcode.INVOKESTATIC, mre));
 
     return instructions;
@@ -532,7 +526,7 @@ public class Instrument24 implements ClassFileTransformer {
         // DynComp does this by creating a new instrumentation object
         // for each class - probably a cleaner solution.
         synchronized (this) {
-          MethodGen24 mgen = new MethodGen24(mm, classInfo.class_name);
+          MethodGen24 mgen = new MethodGen24(mm, classInfo.class_name, classBuilder);
 
           // check for the class static initializer method
           if (mgen.getName().equals("<clinit>")) {
@@ -974,13 +968,14 @@ public class Instrument24 implements ClassFileTransformer {
     // getstatic Runtime.nonce (load reference to AtomicInteger daikon.chicory.Runtime.nonce)
     newCode.add(
         FieldInstruction.of(
-            Opcode.GETSTATIC, poolBuilder.fieldRefEntry(runtimeCD, "nonce", atomic_intClassDesc)));
+            Opcode.GETSTATIC,
+            mgen.getPoolBuilder().fieldRefEntry(runtimeCD, "nonce", atomic_intClassDesc)));
 
     // Do an atomic get and increment of nonce value.
     // This is multi-thread safe and leaves int value of nonce on stack.
     MethodRefEntry mre =
-        poolBuilder.methodRefEntry(
-            atomic_intClassDesc, "getAndIncrement", MethodTypeDesc.of(CD_int));
+        mgen.getPoolBuilder()
+            .methodRefEntry(atomic_intClassDesc, "getAndIncrement", MethodTypeDesc.of(CD_int));
     newCode.add(InvokeInstruction.of(Opcode.INVOKEVIRTUAL, mre));
 
     // store original value of nonce into this_invocation_nonce)
@@ -1078,23 +1073,23 @@ public class Instrument24 implements ClassFileTransformer {
 
     // iconst
     // Push the MethodInfo index.
-    newCode.add(loadIntegerConstant(cur_method_info_index));
+    newCode.add(loadIntegerConstant(cur_method_info_index, mgen));
 
     // iconst
     // anewarray
     // Create an array of objects with elements for each parameter.
-    newCode.add(loadIntegerConstant(paramTypes.length));
+    newCode.add(loadIntegerConstant(paramTypes.length, mgen));
     ClassDesc objectArrayCD = objectCD.arrayType(1);
-    newCode.add(NewReferenceArrayInstruction.of(poolBuilder.classEntry(objectCD)));
+    newCode.add(NewReferenceArrayInstruction.of(mgen.getPoolBuilder().classEntry(objectCD)));
 
     // Put each parameter into the array.
     int param_index = param_offset;
     for (int ii = 0; ii < paramTypes.length; ii++) {
       newCode.add(StackInstruction.of(Opcode.DUP));
-      newCode.add(loadIntegerConstant(ii));
+      newCode.add(loadIntegerConstant(ii, mgen));
       ClassDesc at = paramTypes[ii];
       if (at.isPrimitive()) {
-        create_wrapper(newCode, at, param_index);
+        create_wrapper(newCode, at, param_index, mgen);
       } else { // it's a reference of some sort
         newCode.add(LoadInstruction.of(TypeKind.REFERENCE, param_index));
       }
@@ -1112,14 +1107,14 @@ public class Instrument24 implements ClassFileTransformer {
       } else {
         LocalVariable return_local = getReturnLocal(mgen, ret_type);
         if (ret_type.isPrimitive()) {
-          create_wrapper(newCode, ret_type, return_local.slot());
+          create_wrapper(newCode, ret_type, return_local.slot(), mgen);
         } else {
           newCode.add(LoadInstruction.of(TypeKind.REFERENCE, return_local.slot()));
         }
       }
 
       // push line number
-      newCode.add(loadIntegerConstant(line));
+      newCode.add(loadIntegerConstant(line, mgen));
     }
 
     MethodTypeDesc methodArgs;
@@ -1130,7 +1125,7 @@ public class Instrument24 implements ClassFileTransformer {
     } else {
       methodArgs = MethodTypeDesc.of(CD_void, CD_Object, CD_int, CD_int, objectArrayCD);
     }
-    MethodRefEntry mre = poolBuilder.methodRefEntry(runtimeCD, callMethod, methodArgs);
+    MethodRefEntry mre = mgen.getPoolBuilder().methodRefEntry(runtimeCD, callMethod, methodArgs);
     newCode.add(InvokeInstruction.of(Opcode.INVOKESTATIC, mre));
   }
 
@@ -1221,7 +1216,8 @@ public class Instrument24 implements ClassFileTransformer {
    * @param prim_type the primitive type of the local variable or parameter
    * @param var_index the offset into the local stack of the variable or parameter
    */
-  private void create_wrapper(List<CodeElement> newCode, ClassDesc prim_type, int var_index) {
+  private void create_wrapper(
+      List<CodeElement> newCode, ClassDesc prim_type, int var_index, MethodGen24 mgen) {
 
     String wrapperClassName;
     TypeKind typeKind;
@@ -1264,11 +1260,12 @@ public class Instrument24 implements ClassFileTransformer {
 
     String classname = runtime_classname + "$" + wrapperClassName;
     ClassDesc wrapperCD = ClassDesc.of(classname);
-    newCode.add(NewObjectInstruction.of(poolBuilder.classEntry(wrapperCD)));
+    newCode.add(NewObjectInstruction.of(mgen.getPoolBuilder().classEntry(wrapperCD)));
     newCode.add(StackInstruction.of(Opcode.DUP));
     newCode.add(LoadInstruction.of(typeKind, var_index));
     MethodRefEntry mre =
-        poolBuilder.methodRefEntry(wrapperCD, "<init>", MethodTypeDesc.of(CD_void, prim_type));
+        mgen.getPoolBuilder()
+            .methodRefEntry(wrapperCD, "<init>", MethodTypeDesc.of(CD_void, prim_type));
     newCode.add(InvokeInstruction.of(Opcode.INVOKESPECIAL, mre));
   }
 
@@ -1699,7 +1696,7 @@ public class Instrument24 implements ClassFileTransformer {
    * @param value to be pushed
    * @return a push instruction
    */
-  protected CodeElement loadIntegerConstant(final int value) {
+  protected CodeElement loadIntegerConstant(final int value, MethodGen24 mgen) {
     return switch (value) {
       case -1 -> ConstantInstruction.ofIntrinsic(Opcode.ICONST_M1);
       case 0 -> ConstantInstruction.ofIntrinsic(Opcode.ICONST_0);
@@ -1713,7 +1710,7 @@ public class Instrument24 implements ClassFileTransformer {
               ? ConstantInstruction.ofArgument(Opcode.BIPUSH, value)
               : (value >= Short.MIN_VALUE && value <= Short.MAX_VALUE)
                   ? ConstantInstruction.ofArgument(Opcode.SIPUSH, value)
-                  : buildLDCInstruction(poolBuilder.intEntry(value));
+                  : buildLDCInstruction(mgen.getPoolBuilder().intEntry(value));
     };
   }
 }
