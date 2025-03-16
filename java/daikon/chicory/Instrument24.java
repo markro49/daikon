@@ -127,12 +127,6 @@ public class Instrument24 implements ClassFileTransformer {
   /** Directory into which to dump original classes. */
   File debug_uninstrumented_dir;
 
-  /**
-   * Stores information about the current class that is useful for writing out decl and/or dtrace
-   * information.
-   */
-  private ClassInfo classInfo;
-
   // Variables used for processing the current method.
   // They are initialized in instrumentCode().
 
@@ -367,14 +361,14 @@ public class Instrument24 implements ClassFileTransformer {
     }
 
     // Instrument the classfile, die on any errors
-    classInfo = new ClassInfo(binaryClassName, cfLoader);
+    ClassInfo classInfo = new ClassInfo(binaryClassName, cfLoader);
     byte[] newBytes = {};
     debug_transform.log("%nClass: %s%n", binaryClassName);
     try {
       newBytes =
           classFile.build(
               classModel.thisClass().asSymbol(),
-              classBuilder -> instrumentClass(classBuilder, classModel));
+              classBuilder -> instrumentClass(classBuilder, classModel, classInfo));
 
     } catch (Throwable t) {
       System.err.printf("Unexpected error %s in transform of %s%n", t, binaryClassName);
@@ -401,7 +395,8 @@ public class Instrument24 implements ClassFileTransformer {
    * @param classBuilder for the class
    * @param classModel for the class
    */
-  private void instrumentClass(ClassBuilder classBuilder, ClassModel classModel) {
+  private void instrumentClass(
+      ClassBuilder classBuilder, ClassModel classModel, ClassInfo classInfo) {
 
     debugInstrument.log("Class Attributes:%n");
     for (java.lang.classfile.Attribute<?> a : classModel.attributes()) {
@@ -409,7 +404,7 @@ public class Instrument24 implements ClassFileTransformer {
     }
 
     // Have each non-void method save its result in a local variable before returning.
-    instrument_all_methods(classModel, classBuilder);
+    instrument_all_methods(classModel, classBuilder, classInfo);
 
     // Remember any constant static fields.
     List<FieldModel> fields = classModel.fields();
@@ -447,7 +442,7 @@ public class Instrument24 implements ClassFileTransformer {
    *
    * @param mgen the method to modify, typically the class static initializer
    */
-  private void addInvokeToClinit(MethodGen24 mgen) {
+  private void addInvokeToClinit(MethodGen24 mgen, ClassInfo classInfo) {
 
     try {
       List<CodeElement> il = mgen.getInstructionList();
@@ -462,7 +457,7 @@ public class Instrument24 implements ClassFileTransformer {
         // Get the translation for this instruction (if any)
         if (inst instanceof ReturnInstruction) {
           // insert code prior to 'inst'
-          for (CodeElement ce : call_initNotify(mgen)) {
+          for (CodeElement ce : call_initNotify(mgen, classInfo)) {
             li.add(ce);
           }
         }
@@ -481,7 +476,7 @@ public class Instrument24 implements ClassFileTransformer {
    *
    * @return the instruction list
    */
-  private List<CodeElement> call_initNotify(MethodGen24 mgen) {
+  private List<CodeElement> call_initNotify(MethodGen24 mgen, ClassInfo classInfo) {
 
     List<CodeElement> instructions = new ArrayList<>();
 
@@ -503,7 +498,8 @@ public class Instrument24 implements ClassFileTransformer {
    * @param classModel for current class
    * @param classBuilder for current class
    */
-  private void instrument_all_methods(ClassModel classModel, ClassBuilder classBuilder) {
+  private void instrument_all_methods(
+      ClassModel classModel, ClassBuilder classBuilder, ClassInfo classInfo) {
 
     if (classModel.majorVersion() < ClassFile.JAVA_6_VERSION) {
       System.out.printf(
@@ -532,7 +528,7 @@ public class Instrument24 implements ClassFileTransformer {
           if (mgen.getName().equals("<clinit>")) {
             classInfo.hasClinit = true;
             if (Chicory.checkStaticInit) {
-              addInvokeToClinit(mgen);
+              addInvokeToClinit(mgen, classInfo);
             }
             if (!Chicory.instrument_clinit) {
               // If we are not going to instrument this method,
