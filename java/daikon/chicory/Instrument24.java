@@ -289,7 +289,7 @@ public class Instrument24 implements ClassFileTransformer {
       debug_transform.log("Dumping .class and .javap for %s to %s%n", className, directory);
       // Write the byte array to a .class file.
       File outputFile = new File(directory, c.getClassName() + ".class");
-      Files.write(outputFile.getPath(), classBytes);
+      Files.write(outputFile.toPath(), classBytes);
       // Write a BCEL-like file with an extension of .javap.
       try (BufferedWriter writer =
           Files.newBufferedWriter(
