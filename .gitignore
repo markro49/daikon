@@ -522,4 +522,3 @@ java/cov-int/
 
 # Directory used for creating docker images
 scripts/dockerdir/
-
