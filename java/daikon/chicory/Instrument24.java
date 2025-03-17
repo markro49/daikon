@@ -1012,11 +1012,10 @@ public class Instrument24 implements ClassFileTransformer {
    * call daikon.chicory.Runtime.enter().
    *
    * @param instructions instruction list for method
-   * @param codeBuilder for the given method's code
    * @param mgen describes the given method
    */
   private void add_entry_instrumentation(
-      List<CodeElement> instructions, CodeBuilder codeBuilder, MethodGen24 mgen, MInfo24 minfo) {
+      List<CodeElement> instructions, MethodGen24 mgen, MInfo24 minfo) {
 
     List<CodeElement> newCode = generateIncrementNonce(mgen, minfo);
 
