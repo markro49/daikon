@@ -129,7 +129,7 @@ public class Instrument24 implements ClassFileTransformer {
   File debug_uninstrumented_dir;
 
   /** Variables used for processing the current method. */
-  private class MInfo24 {
+  private static class MInfo24 {
 
     /** The index of the current method in SharedData.methods. */
     public final int method_info_index;
@@ -152,7 +152,7 @@ public class Instrument24 implements ClassFileTransformer {
     public final Label endLabel;
 
     /** Label for start of orignal code, post insertion of entry instrumentation. */
-    public @MonotonicNonNull Label entryLabel;
+    public Label entryLabel;
 
     /**
      * Label for first byte code of the current method, prior to instrumenting, as a CodeModel
@@ -171,14 +171,14 @@ public class Instrument24 implements ClassFileTransformer {
      *
      * @param method_info_index the index of the method in SharedData.methods
      * @param nextLocalIndex next available slot in localsTable, currently always = max locals
-     * @param startLabel label for first byte code of method, used to give new locals method scope
-     * @param endLabel label for last byte code of method, used to give new locals method scope
+     * @param codeBuilder a CodeBuilder
      */
-    public MInfo24(int method_info_index, int nextLocalIndex, Label startLabel, Label endLabel) {
+    public MInfo24(int method_info_index, int nextLocalIndex, CodeBuilder codeBuilder) {
       this.method_info_index = method_info_index;
       this.nextLocalIndex = nextLocalIndex;
-      this.startLabel = startLabel;
-      this.endLabel = endLabel;
+      this.startLabel = codeBuilder.startLabel();
+      this.endLabel = codeBuilder.endLabel();
+      this.entryLabel = codeBuilder.newLabel();
     }
   }
 
@@ -815,12 +815,7 @@ public class Instrument24 implements ClassFileTransformer {
       MethodInfo curMethodInfo,
       int method_info_index) {
 
-    MInfo24 minfo =
-        new MInfo24(
-            method_info_index,
-            mgen.getMaxLocals(),
-            codeBuilder.startLabel(),
-            codeBuilder.endLabel());
+    MInfo24 minfo = new MInfo24(method_info_index, mgen.getMaxLocals(), codeBuilder);
 
     @SuppressWarnings("JdkObsolete")
     List<CodeElement> codeList = new LinkedList<>();
@@ -1046,7 +1041,6 @@ public class Instrument24 implements ClassFileTransformer {
       }
 
       // Label for new location of start of original code.
-      minfo.entryLabel = codeBuilder.newLabel();
       debugInstrument.log("entryLabel: %s%n", minfo.entryLabel);
       assert inst != null : "@AssumeAssertion(nullness): inst will always be set in loop above";
       minfo.labelMap.put(inst, minfo.entryLabel);
@@ -1199,9 +1193,9 @@ public class Instrument24 implements ClassFileTransformer {
   }
 
   /**
-   * Checks to see if a switch instruction's default target or any of the case targets refers to the
-   * {@link #oldStartLabel}. If so, replace those targets with the entryLabel, store the result in
-   * modifiedTarget and modifiedCaseList, and return true. Otherwise, return false.
+   * Checks to see if a switch instruction's default target or any of the case targets refers to
+   * {@code minfo.oldStartLabel}. If so, replace those targets with the entryLabel, store the result
+   * in modifiedTarget and modifiedCaseList, and return true. Otherwise, return false.
    *
    * @param defaultTarget the default target for the switch instruction
    * @param caseList the case list for the switch instruction
