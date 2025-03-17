@@ -767,7 +767,7 @@ public class Instrument24 implements ClassFileTransformer {
       MInfo24 minfo) {
 
     // Add nonce local to matchup enter/exits
-    add_entry_instrumentation(instructions, codeBuilder, mgen, minfo);
+    add_entry_instrumentation(instructions, mgen, minfo);
 
     // debugInstrument.log("Modified code: %s%n", mgen.getMethod().getCode());
 
