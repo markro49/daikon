@@ -395,7 +395,8 @@ public class Instrument24 implements ClassFileTransformer {
       RuntimeException re =
           new RuntimeException(
               String.format("Unexpected error %s in transform of %s", t, binaryClassName), t);
-      t.printStackTrace();
+      re.printStackTrace();
+      throw re;
     }
 
     if (classInfo.shouldInclude) {
