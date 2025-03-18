@@ -755,16 +755,12 @@ public class Instrument24 implements ClassFileTransformer {
    * Insert the our instrumentation code into the instruction list for the given method.
    *
    * @param instructions instruction list for method
-   * @param codeBuilder for the given method's code
    * @param mgen describes the given method
    * @param curMethodInfo provides additional information about the method
+   * @param minfo for the given method's code
    */
   private void insertInstrumentation(
-      List<CodeElement> instructions,
-      CodeBuilder codeBuilder,
-      MethodGen24 mgen,
-      MethodInfo curMethodInfo,
-      MInfo24 minfo) {
+      List<CodeElement> instructions, MethodGen24 mgen, MethodInfo curMethodInfo, MInfo24 minfo) {
 
     // Add nonce local to matchup enter/exits
     add_entry_instrumentation(instructions, mgen, minfo);
@@ -854,7 +850,7 @@ public class Instrument24 implements ClassFileTransformer {
     }
 
     // Generate and insert our instrumentation code.
-    insertInstrumentation(codeList, codeBuilder, mgen, curMethodInfo, minfo);
+    insertInstrumentation(codeList, mgen, curMethodInfo, minfo);
 
     // Copy the modified local variable table to the output class.
     debugInstrument.log("LocalVariableTable:%n");
@@ -892,6 +888,7 @@ public class Instrument24 implements ClassFileTransformer {
    *
    * @param inst the instruction to inspect, which might be a return instruction
    * @param mgen describes the given method
+   * @param minfo for the given method's code
    * @param shouldIncludeIter whether or not to instrument this return
    * @param exitLocationIter list of exit line numbers
    * @return instruction list for instrumenting the return, which is empty if {@code inst} is not a
@@ -946,6 +943,7 @@ public class Instrument24 implements ClassFileTransformer {
    *
    * @param mgen describes the given method
    * @param returnType the type of the return; may be null if the variable is known to already exist
+   * @param minfo for the given method's code
    * @return a local variable to save the return value
    */
   @SuppressWarnings("nullness")
@@ -972,6 +970,7 @@ public class Instrument24 implements ClassFileTransformer {
    * Generates code to initialize a new local variable (this_invocation_nonce) to Runtime.nonce++.
    *
    * @param mgen describes the given method
+   * @param minfo for the given method's code
    */
   private List<CodeElement> generateIncrementNonce(MethodGen24 mgen, MInfo24 minfo) {
     String atomic_int_classname = "java.util.concurrent.atomic.AtomicInteger";
@@ -1013,6 +1012,7 @@ public class Instrument24 implements ClassFileTransformer {
    *
    * @param instructions instruction list for method
    * @param mgen describes the given method
+   * @param minfo for the given method's code
    */
   private void add_entry_instrumentation(
       List<CodeElement> instructions, MethodGen24 mgen, MInfo24 minfo) {
@@ -1064,6 +1064,7 @@ public class Instrument24 implements ClassFileTransformer {
    *
    * @param newCode an instruction list to append the enter/exit code to
    * @param mgen describes the given method
+   * @param minfo for the given method's code
    * @param callMethod either "enter" or "exit"
    * @param line source line number if this is an exit
    */
@@ -1161,6 +1162,7 @@ public class Instrument24 implements ClassFileTransformer {
    * will do nothing.
    *
    * @param inst the instruction to check
+   * @param minfo for the given method's code
    * @return the original instruction or it's replacement
    */
   private CodeElement checkTargetLabel(CodeElement inst, MInfo24 minfo) {
@@ -1198,6 +1200,7 @@ public class Instrument24 implements ClassFileTransformer {
    *
    * @param defaultTarget the default target for the switch instruction
    * @param caseList the case list for the switch instruction
+   * @param minfo for the given method's code
    * @return true if either the defaultTarget or the caseList has been modified
    */
   private boolean checkSwitchTargets(
@@ -1681,6 +1684,7 @@ public class Instrument24 implements ClassFileTransformer {
    * Create a new local variable with a scope of the full method.
    *
    * @param mgen describes the given method
+   * @param minfo for the given method's code
    * @param localName name of new local variable
    * @param localType type of new local variable
    * @return the new local variable
