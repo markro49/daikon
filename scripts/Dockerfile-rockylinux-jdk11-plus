@@ -8,8 +8,8 @@ LABEL org.opencontainers.image.authors="Michael Ernst <mernst@cs.washington.edu>
 
 # According to
 # https://docs.docker.com/engine/userguide/eng-image/dockerfile_best-practices/:
-#  * Put "apt-get update" and "apt-get install" in the same RUN command.
-#  * Do not run "apt-get upgrade"; instead get upstream to update.
+#  * Put "apt update" and "apt install" in the same RUN command.
+#  * Do not run "apt upgrade"; instead get upstream to update.
 RUN dnf -q -y upgrade && dnf -q -y install \
   autoconf \
   automake \
@@ -28,6 +28,7 @@ RUN dnf -q -y upgrade && dnf -q -y install \
   unzip \
   which
 
+# Install the JDK.
 RUN dnf -q -y install \
   java-11-openjdk \
   java-11-openjdk-devel
@@ -41,18 +42,23 @@ RUN dnf -q -y install \
 
 RUN dnf -q -y install \
   ctags \
+  devscripts-checkbashisms \
   gcc-c++ \
   graphviz \
   netpbm \
   netpbm-progs \
+  pip \
   python3 \
   python3-distutils-extra \
+  ShellCheck \
   texlive \
   wget
 
 # Alternately, run: dnf --enablerepo=crb install PACKAGENAME
-RUN dnf -y install dnf-plugins-core \
-&& dnf config-manager --set-enabled crb \
+RUN dnf config-manager --set-enabled crb \
+&& dnf -y install dnf-plugins-core \
 && dnf -y install texinfo texinfo-tex
+
+RUN pip install ruff
 
 RUN dnf -q clean all

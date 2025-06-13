@@ -8,8 +8,8 @@ LABEL org.opencontainers.image.authors="Michael Ernst <mernst@cs.washington.edu>
 
 # According to
 # https://docs.docker.com/engine/userguide/eng-image/dockerfile_best-practices/:
-#  * Put "apt-get update" and "apt-get install" in the same RUN command.
-#  * Do not run "apt-get upgrade"; instead get upstream to update.
+#  * Put "apt update" and "apt install" in the same RUN command.
+#  * Do not run "apt upgrade"; instead get upstream to update.
 RUN dnf -q -y upgrade && dnf -q -y install \
   autoconf \
   automake \
@@ -28,13 +28,18 @@ RUN dnf -q -y upgrade && dnf -q -y install \
   unzip \
   which
 
+# Install the JDK.
+# Packages java-24-openjdk* don't yet exist as of 2025-04-28.
 # RUN dnf -q -y install \
-#   java-21-openjdk \
-#   java-21-openjdk-devel
+#   java-24-openjdk \
+#   java-24-openjdk-devel
 
-RUN curl --silent -o openjdk-24_linux-x64_bin.tar.gz https://download.java.net/java/GA/jdk24/1f9ff9062db4449d8ca828c504ffae90/36/GPL/openjdk-24_linux-x64_bin.tar.gz && \
-tar xzf openjdk-24_linux-x64_bin.tar.gz
-ENV PATH="$HOME/jdk-24/bin:$PATH"
+RUN curl --silent -o jdk-24_linux-x64_bin.tar.gz https://download.oracle.com/java/24/latest/jdk-24_linux-x64_bin.tar.gz \
+&& tar xzf jdk-24_linux-x64_bin.tar.gz
+ENV PATH="/jdk-24.0.1/bin:/root/.local/bin:/root/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+RUN chmod og+rx /root \
+&& chmod og+r /root/*
 
 # This enables the repository that contains jq
 RUN dnf -q -y install \
@@ -45,12 +50,15 @@ RUN dnf -q -y install \
 
 RUN dnf -q -y install \
   ctags \
+  devscripts-checkbashisms \
   gcc-c++ \
   graphviz \
   netpbm \
   netpbm-progs \
+  pip \
   python3 \
   python3-distutils-extra \
+  ShellCheck \
   texlive \
   wget
 
@@ -58,5 +66,7 @@ RUN dnf -q -y install \
 RUN dnf config-manager --set-enabled crb \
 && dnf -y install dnf-plugins-core \
 && dnf -y install texinfo texinfo-tex
+
+RUN pip install ruff
 
 RUN dnf -q clean all
