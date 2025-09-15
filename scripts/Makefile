@@ -1,35 +1,41 @@
 HIERDIR = ../tools/hierarchical
 KMDIR = ../tools/kmeans
 
-all: difftbl cluster clgroup kmeans trace-untruncate-fast checkargs.pm
+# These are executables and/or downloaded from the Internet.
+all: difftbl cluster clgroup kmeans trace-untruncate-fast checkargs.pm style-fix style-check
 .PHONY: all
 
 
 style-fix: shell-style-fix python-style-fix perl-style-fix
-style-check: shell-style-check python-style-check perl-style-check
+style-check: shell-style-check python-style-check python-typecheck perl-style-check
 .PHONY: style-fix shell-style-fix python-style-fix perl-style-fix style-check shell-style-check python-style-check perl-style-check
 
 perl-style:
 	@for perlfile in $(shell ls *.pm *.pl); do perl -Mstrict -cw $${perlfile}; done
 
-PYTHON_FILES=$(wildcard **/*.py)
+PYTHON_FILES:=$(wildcard *.py) $(shell grep -r -l --exclude='*.py' --exclude='*~' --exclude='*.tar' --exclude=gradlew --exclude-dir=.git '^\#! \?\(/bin/\|/usr/bin/env \)python')
+PYTHON_FILES_TO_CHECK:=$(filter-out ${lcb_runner},${PYTHON_FILES})
 python-style-fix:
-	echo $PATH
-	whereis ruff
-	which ruff
-	ruff --version
-	ruff format ${PYTHON_FILES}
-	ruff check ${PYTHON_FILES} --fix
+ifneq (${PYTHON_FILES_TO_CHECK},)
+	@ruff --version
+	@ruff format ${PYTHON_FILES_TO_CHECK}
+	@ruff -q check ${PYTHON_FILES_TO_CHECK} --fix
+endif
 python-style-check:
-	echo $PATH
-	whereis ruff
-	which ruff
-	ruff --version
-	ruff format --check ${PYTHON_FILES}
-	ruff check ${PYTHON_FILES}
+ifneq (${PYTHON_FILES_TO_CHECK},)
+	@ruff --version
+	@ruff -q format --check ${PYTHON_FILES_TO_CHECK}
+	@ruff -q check ${PYTHON_FILES_TO_CHECK}
+endif
+python-typecheck:
+ifneq (${PYTHON_FILES_TO_CHECK},)
+	@mypy --version
+	@mypy --strict --install-types --non-interactive ${PYTHON_FILES_TO_CHECK} > /dev/null 2>&1 || true
+	mypy --strict --ignore-missing-imports ${PYTHON_FILES_TO_CHECK}
+endif
 
-SH_SCRIPTS   := $(shell grep -r -l --exclude='*~' --exclude='*.tar' --exclude=gradlew --exclude=lsb_release --exclude-dir=.git '^\#! \?\(/bin/\|/usr/bin/env \)sh'   | grep -v addrfilter | grep -v cronic-orig | grep -v mail-stackoverflow.sh)
-BASH_SCRIPTS := $(shell grep -r -l --exclude='*~' --exclude='*.tar' --exclude=gradlew --exclude=lsb_release --exclude-dir=.git '^\#! \?\(/bin/\|/usr/bin/env \)bash' | grep -v addrfilter | grep -v cronic-orig | grep -v mail-stackoverflow.sh)
+SH_SCRIPTS   := $(shell grep -r -l --exclude='*~' --exclude='*.tar' --exclude=gradlew --exclude-dir=.git '^\#! \?\(/bin/\|/usr/bin/env \)sh'   | grep -v addrfilter | grep -v cronic-orig | grep -v mail-stackoverflow.sh)
+BASH_SCRIPTS := $(shell grep -r -l --exclude='*~' --exclude='*.tar' --exclude=gradlew --exclude-dir=.git '^\#! \?\(/bin/\|/usr/bin/env \)bash' | grep -v addrfilter | grep -v cronic-orig | grep -v mail-stackoverflow.sh)
 SHFMT_EXISTS := $(shell command -v shfmt 2> /dev/null)
 shell-style-fix:
 ifdef SHFMT_EXISTS
@@ -45,6 +51,7 @@ endif
 
 showvars:
 	@echo "PYTHON_FILES=${PYTHON_FILES}"
+	@echo "PYTHON_FILES_TO_CHECK=${PYTHON_FILES_TO_CHECK}"
 	@echo "SH_SCRIPTS=${SH_SCRIPTS}"
 	@echo "BASH_SCRIPTS=${BASH_SCRIPTS}"
 

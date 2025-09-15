@@ -907,8 +907,8 @@ public final class FileIO {
     }
 
     /**
-     * Return a string representation of this. The Invocation is formatted on two lines, indented by
-     * two spaces. The receiver Invocation may be canonicalized or not.
+     * Returns a string representation of this. The Invocation is formatted on two lines, indented
+     * by two spaces. The receiver Invocation may be canonicalized or not.
      *
      * @return a string representation of this
      */
@@ -917,8 +917,8 @@ public final class FileIO {
     }
 
     /**
-     * Return a string representation of this. The Invocation is formatted on two lines, indented by
-     * two spaces. The receiver Invocation may be canonicalized or not.
+     * Returns a string representation of this. The Invocation is formatted on two lines, indented
+     * by two spaces. The receiver Invocation may be canonicalized or not.
      *
      * @param show_values if true, show values; otherwise, return just the Ppt name
      * @return a string representation of this
@@ -1245,19 +1245,30 @@ public final class FileIO {
 
   /** The type of the record that was most recently read. */
   public enum RecordType {
-    SAMPLE, // got a sample
+    /** Got a sample. */
+    SAMPLE,
 
-    DECL, // got a ppt decl
-    DECL_VERSION, // got an indication of the ppt decl format
-    COMPARABILITY, // got a VarComparability declaration
-    LIST_IMPLEMENTORS, // got a ListImplementors declaration
-    INPUT_LANGUAGE, // got an input-language declaration
+    /** Got a ppt decl. */
+    DECL,
+    /** Got an indication of the ppt decl format. */
+    DECL_VERSION,
+    /** Got a VarComparability declaration. */
+    COMPARABILITY,
+    /** Got a ListImplementors declaration. */
+    LIST_IMPLEMENTORS,
+    /** Got an input-language declaration. */
+    INPUT_LANGUAGE,
 
-    NULL, // haven't read anything yet
-    COMMENT, // got a comment
-    EOF, // reached end of file
-    TRUNCATED, // dkconfig_max_line_number reached (without error)
-    ERROR, // continuable error; fatal errors thrown as exceptions
+    /** Haven't read anything yet. */
+    NULL,
+    /** Got a comment. */
+    COMMENT,
+    /** Reached end of file. */
+    EOF,
+    /** Dkconfig_max_line_number reached (without error). */
+    TRUNCATED,
+    /** Continuable error; fatal errors thrown as exceptions. */
+    ERROR,
   };
 
   /**
@@ -2539,9 +2550,8 @@ public final class FileIO {
   }
 
   /**
-   * Returns whether or not the specified ppt name should be included in processing. Ppts can be
-   * excluded because they match the omit_regexp, don't match ppt_regexp, or are greater than
-   * ppt_max_name.
+   * Returns true if the specified ppt name should be included in processing. Ppts can be excluded
+   * because they match the omit_regexp, don't match ppt_regexp, or are greater than ppt_max_name.
    */
   public static boolean ppt_included(String ppt_name) {
 
@@ -3118,7 +3128,7 @@ public final class FileIO {
     throw new Daikon.UserError(cause, msg);
   }
 
-  /** Returns whether the line is the start of a ppt declaration. */
+  /** Returns true if the line is the start of a ppt declaration. */
   @RequiresNonNull("FileIO.new_decl_format")
   @Pure
   private static boolean is_declaration_header(String line) {

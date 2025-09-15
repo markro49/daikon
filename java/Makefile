@@ -38,19 +38,29 @@ endif
 ifeq ($(shell test ${JAVA_RELEASE_NUMBER} -ge 17; echo $$?),0)
   JAVA17 := 1
 endif
+# Temporary, since Java 24 is not a LTS release.
 ifeq ($(shell test ${JAVA_RELEASE_NUMBER} -ge 24; echo $$?),0)
   JAVA24 := 1
+endif
+ifeq ($(shell test ${JAVA_RELEASE_NUMBER} -ge 25; echo $$?),0)
+  JAVA25 := 1
 endif
 
 ifeq ($(shell test ${JAVA_RELEASE_NUMBER} -gt 20; echo $$?),0)
   LINT_THIS_ESCAPE=-Xlint:-this-escape
 endif
 
+OS_ID := $(shell sed -n -e 's/^NAME="\(.*\)"/\1/p' /etc/os-release)
+OS_REL := $(shell sed -n -e 's/^VERSION_ID="(.*)"/\1/' /etc/os-release)
+
 # Users can set JAVAC_TARGET_FLAGS, taking precedence over these settings.
-ifeq ($(JAVA24), 0)
-JAVAC_TARGET_FLAGS ?= -source 8 -target 8
+# Use "--source 25 --target 25" because Java 25 is an LTS version.
+ifeq ($(JAVA25), 1)
+  JAVAC_TARGET_FLAGS ?= --source 25 --target 25 --system ${JAVA25_HOME}
+else ifeq ($(JAVA24), 1)
+  JAVAC_TARGET_FLAGS ?= -source 24 -target 24
 else
-JAVAC_TARGET_FLAGS ?= -source 24 -target 24
+  JAVAC_TARGET_FLAGS ?= -source 8 -target 8
 endif
 
 # TODO: -Werror is temporary.
@@ -117,8 +127,7 @@ ifneq "$(wildcard ${JAVA_HOME}/jre/lib/rt.jar)" ""
   DAIKON_CLASSPATH := $(DAIKON_CLASSPATH):${JAVA_HOME}/jre/lib/rt.jar
 endif
 
-# -docletpath doesn't seem to respect path wildcards as -cp does
-DOCLETPATH := $(wildcard ${DAIKONDIR}/java/lib/bcel-util-*.jar):$(wildcard ${DAIKONDIR}/java/lib/hashmap-util-*.jar):$(wildcard ${DAIKONDIR}/java/lib/plume-util-*.jar):$(wildcard ${DAIKONDIR}/java/lib/reflection-util-*.jar):${DAIKON_CLASSPATH}:${DAIKONDIR}/java/lib/daikon-plumelib.jar
+DOCLETPATH := ${DAIKONDIR}/java:$(wildcard ${DAIKONDIR}/java/lib/bcel-util-*.jar):$(wildcard ${DAIKONDIR}/java/lib/plume-util-*.jar):$(wildcard ${DAIKONDIR}/java/lib/reflection-util-*.jar):$(wildcard ${DAIKONDIR}/java/lib/hashmap-util-*.jar):${DAIKONDIR}/java/lib/daikon-plumelib.jar
 
 DOCLET_FLAGS :=
 LINKOFFLINE := https://docs.oracle.com/javase/8/docs/api/
@@ -143,8 +152,10 @@ endif
 # Currently, there are four files that require Java 24:
 # chicory/Instrument24.java chicory/MethodGen24.java
 # dcomp/Instrument24.java dcomp/DCinstrument24.java.
-
-DAIKON_JAVA_FILES := $(shell find daikon/ -name '*.java' -not -name '*\#*' -print | ${SORT_DIRECTORY_ORDER})
+# Because we need to compile the Java 24 files with different options, we need
+# to remove them from the file lists and then, if we are running on Java 24,
+# add them back in.
+DAIKON_JAVA_FILES = $(shell find daikon/ -name "*24.java" -prune -o -name '*.java' -not -name '*\#*' -print | ${SORT_DIRECTORY_ORDER})
 ifeq ($(JAVA24), 0)
   DAIKON_JAVA_FILES :=  $(filter-out %24.java, $(DAIKON_JAVA_FILES))
 endif
@@ -794,9 +805,6 @@ else
   error-prone-version = 2.36.0
   extra-error-prone-args-1 = --should-stop=ifError=FLOW
 endif
-ifeq ($(JAVA24), 1)
-  extra-error-prone-args-2 = -source 24 -target 24
-endif
 
 ERRORPRONE_PROCESSOR_PATH := ${DAIKONDIR}/java/lib/error-prone/error_prone_core-${error-prone-version}-with-dependencies.jar:${DAIKONDIR}/java/lib/error-prone/dataflow-errorprone-3.48.4.jar
 
@@ -829,7 +837,6 @@ else
 	  -Xmaxwarns 100000 \
 	  -Werror \
 	  ${extra-error-prone-args-1} \
-	  ${extra-error-prone-args-2} \
 	  ${JAVA_FILES_FOR_STYLE}
 endif
 
@@ -843,7 +850,6 @@ errorprone-replacements:
 	  '-Xplugin:ErrorProne -XepPatchChecks:UnnecessaryParentheses,ArrayToString -XepPatchLocation:${DAIKONDIR}/java' \
 	  -Xmaxwarns 100000 \
 	  ${extra-error-prone-args-1} \
-	  ${extra-error-prone-args-2} \
 	  ${JAVA_FILES_FOR_STYLE}
 
 findbugs: .findbugs-output
@@ -1258,18 +1264,12 @@ javadoc-files.txt:
 	$(MAKE) ${AUTO_GENERATED_FILES}
 	find * \( -name 'PrototypeChecker.java' -o -name 'VIndexChecker.java' -o -name 'VIndexAnnotatedTypeFactory.java' -o -path 'daikon/dcomp-transfer' \) -prune -o -name "*24.java" -prune -o -name "*.java" -print | ${SORT_DIRECTORY_ORDER} > javadoc-files.txt
 ifeq ($(JAVA24), 1)
-	echo daikon/chicory/*24.java daikon/dcomp/*24.java >> javadoc-files.txt
+	find * -name "*24.java" -print | ${SORT_DIRECTORY_ORDER} >> javadoc-files.txt
 endif
 
 # If Java 8, don't run javadoc; a bug in javadoc causes it to crash.
 ifeq ($(JAVA8), 1)
   SKIP_JAVADOC=1
-endif
-
-ifeq ($(JAVA24), 1)
-  extra-javadoc-arg = -source 24
-else
-  extra-javadoc-arg =
 endif
 
 # Build javadoc using the daikon package and all subpackages of daikon.
@@ -1283,7 +1283,7 @@ ifeq ($(SKIP_JAVADOC),1)
 else
 	mkdir -p $(JAVADOC_DEST)
 	@make javadoc-files.txt
-	${JAVADOC_COMMAND} ${extra-javadoc-arg} -J-Xmx3600m -J-ea $(JAVADOC_FLAGS) -Xdoclint:all ${DOCLET_FLAGS} \
+	${JAVADOC_COMMAND} -J-Xmx3600m -J-ea $(JAVADOC_FLAGS) -Xdoclint:all ${DOCLET_FLAGS} \
 		@javadoc-files.txt
 	@rm -f javadoc-files.txt
 	cd $(JAVADOC_DEST) && $(PLUMESCRIPTS)/preplace '^ *&#64;cindex.*' ''
@@ -1318,18 +1318,29 @@ else
 	cd api && ../../utils/plume-scripts/preplace '^ *&#64;cindex.*' ''
 endif
 
-## Test that Javadoc exists.
+## Test that each program component is documented with Javadoc.
 ## You should regenerate api/ after running this.
 requireJavadoc: $(JAVA_FILES)
 # For refactorings that touch a lot of code that you don't understand, create
 # top-level file SKIP-REQUIRE-JAVADOC.  Delete it after the pull request is merged.
 	if [ ! -f SKIP-REQUIRE-JAVADOC ]; then \
-	  ${JAVA} -jar $(wildcard ${DAIKONDIR}/java/lib/require-javadoc/require-javadoc-*-all.jar) --exclude="dcomp-transfer" ${DAIKON_JAVA_FILES} ; \
+	  ${JAVA} \
+	    --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED \
+	    --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED \
+	    --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED \
+	    --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED \
+	    --add-opens=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED \
+	    --add-opens=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED \
+	    --add-opens=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED \
+	    --add-opens=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED \
+	    -jar $(wildcard ${DAIKONDIR}/java/lib/require-javadoc/require-javadoc-*-all.jar) \
+	    --exclude="dcomp-transfer" \
+	    ${DAIKON_JAVA_FILES} ; \
 	fi
 
 ../doc/invariants-doc.texinfo: ../utils/plume-scripts daikon/config/InvariantDoclet.class daikon/config/HtmlToTexinfo.class
 	@make javadoc-files.txt
-	${JAVADOC_COMMAND} ${extra-javadoc-args} -J-Xmx3600m -J-ea -docletpath "${DOCLETPATH}" -classpath "${DAIKON_CLASSPATH}" -doclet daikon.config.InvariantDoclet ${DOCLET_FLAGS}\
+	${JAVADOC_COMMAND} ${extra-javadoc-args} -J-Xmx3600m -J-ea -docletpath "${DOCLETPATH}" -classpath "${DAIKON_CLASSPATH}" -doclet daikon.config.InvariantDoclet ${DOCLET_FLAGS} \
 		--texinfo tmpfile \
 		@javadoc-files.txt
 	mv -f tmpfile $@
@@ -1340,7 +1351,7 @@ requireJavadoc: $(JAVA_FILES)
 
 ../doc/config-options.texinfo: ../utils/plume-scripts daikon/config/ParameterDoclet.class daikon/config/HtmlToTexinfo.class
 	@make javadoc-files.txt
-	${JAVADOC_COMMAND} ${extra-javadoc-args} -J-Xmx3600m -J-ea -docletpath "${DOCLETPATH}" -classpath "${DAIKON_CLASSPATH}" -doclet daikon.config.ParameterDoclet ${DOCLET_FLAGS}\
+	${JAVADOC_COMMAND} ${extra-javadoc-args} -J-Xmx3600m -J-ea -docletpath "${DOCLETPATH}" -classpath "${DAIKON_CLASSPATH}" -doclet daikon.config.ParameterDoclet ${DOCLET_FLAGS} \
 		--texinfo tmpfile \
 		@javadoc-files.txt
 	perl -pi -e 's/&#64;cindex/\@cindex/g' tmpfile
@@ -1381,6 +1392,7 @@ showvars:
 
 	@echo CLASSPATH = "${CLASSPATH}"
 	@echo DAIKON_CLASSPATH = "${DAIKON_CLASSPATH}"
+	@echo DOCLETPATH = "${DOCLETPATH}"
 
 	@echo AUTO_GENERATED_FILES = ${AUTO_GENERATED_FILES}
 	@echo DAIKONDIR = "${DAIKONDIR}"
