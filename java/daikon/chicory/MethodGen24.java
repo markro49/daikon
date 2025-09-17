@@ -133,7 +133,7 @@ public class MethodGen24 {
    * The method's local variable table. Often modified by clients, normally to add additional local
    * variables needed for instrumentation.
    */
-  public ArrayList<LocalVariable> localsTable;
+  public List<LocalVariable> localsTable;
 
   /** ConstantPool builder for entire class. */
   // TODO: Should uses of this be synchronized?
