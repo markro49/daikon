@@ -277,6 +277,7 @@ public class MethodGen24 {
 
     // Set up the parameter types and names.
     mtd = methodModel.methodTypeSymbol();
+    returnType = mtd.returnType();
     getParamInfo();
   }
 
@@ -324,6 +325,7 @@ public class MethodGen24 {
 
     poolBuilder = classBuilder.constantPool();
 
+    returnType = mtd.returnType();
     // Set up the parameter types and names.
     getParamInfo();
   }
@@ -331,7 +333,6 @@ public class MethodGen24 {
   /** Setup the paramTypes and paramNames arrays. */
   private void getParamInfo() {
     paramTypes = mtd.parameterArray();
-    returnType = mtd.returnType();
 
     // java.lang.classfile seems to be inconsistent with the parameter types
     // of an inner class constructor. It may optimize away the hidden 'this$0'
