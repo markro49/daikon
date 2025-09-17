@@ -626,9 +626,9 @@ dyncomp-update-goals dcomp-update-goals:
 DCOMP_RT	:= dcomp-rt
 dyncomp-jdk dcomp-jdk   : dcomp_rt.jar
 $(DCOMP_RT) dcomp_rt.jar : dcomp_premain.jar
-	/bin/rm -rf $(DCOMP_RT)
-	$(INSTALL) -d $(DCOMP_RT)
-	$(JAVA_COMMAND) -Xmx3600m daikon.dcomp.$(BuildJDKTool) $(DCOMP_RT)
+	/bin/rm -rf ${DCOMP_RT}
+	${INSTALL} -d ${DCOMP_RT}
+	${JAVA_COMMAND} -Xmx3600m daikon.dcomp.${BuildJDKTool} ${DCOMP_RT}
 # "then" clause is Java 8, "else" clause is Java 9+.
 # For Java 9+, there appears to be a bug in the Java reflection invoke code that it
 # does not check that the arg list matches.  Hence, it tries to invoke
@@ -757,6 +757,9 @@ very-clean: clean clean-generated-files
 	-rm -rf api
 	-rm -rf daikon/dcomp/std_dcomp_out.diff daikon/dcomp/std_dcomp_out.txt
 	-rm -rf daikon/chicory/ChicoryTest.inv.out
+	-rm -rf daikon/dcomp/debug/
+	-rm -rf daikon/dcomp/DcompTest.log
+	-rm -rf daikon/chicory/debug
 
 run:	all
 	${JAVA_COMMAND} daikon.Daikon
