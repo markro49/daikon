@@ -9,6 +9,7 @@ import daikon.Chicory;
 import daikon.plumelib.bcelutil.BcelUtil;
 import daikon.plumelib.bcelutil.SimpleLog;
 import daikon.plumelib.reflection.Signatures;
+import daikon.plumelib.util.ArraysPlume;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.lang.classfile.Attributes;
@@ -107,7 +108,7 @@ public class Instrument24 implements ClassFileTransformer {
   /** Debug information about which classes and/or methods are transformed and why. */
   protected static final SimpleLog debug_transform = new SimpleLog(false);
 
-  // Public so can be enabled from daikon.dcomp.Instrument24.
+  // Public so it can be enabled from daikon.dcomp.Instrument24.
   /** Debug information about ppt-omit and ppt-select. */
   public static final SimpleLog debug_ppt_omit = new SimpleLog(false);
 
@@ -126,7 +127,8 @@ public class Instrument24 implements ClassFileTransformer {
   /** Create an instrumenter. Setup debug directories, if needed. */
   public Instrument24() {
     debug_transform.enabled = Chicory.debug_transform || Chicory.debug || Chicory.verbose;
-    debug_ppt_omit.enabled = debugInstrument.enabled = Chicory.debug;
+    debug_ppt_omit.enabled = Chicory.debug;
+    debugInstrument.enabled = Chicory.debug;
 
     debug_dir = Chicory.debug_dir;
     debug_instrumented_dir = new File(debug_dir, "instrumented");
@@ -141,7 +143,7 @@ public class Instrument24 implements ClassFileTransformer {
   /**
    * Returns true if the given ppt should be ignored. Uses the patterns in {@link
    * daikon.chicory.Runtime#ppt_omit_pattern} and {@link daikon.chicory.Runtime#ppt_select_pattern}.
-   * This method is used by both Chicory and DynComp.
+   * This method is called by both Chicory and DynComp.
    *
    * @param className class name to be checked
    * @param methodName method name to be checked
@@ -151,14 +153,12 @@ public class Instrument24 implements ClassFileTransformer {
   public static boolean shouldIgnore(
       @BinaryName String className, String methodName, String pptName) {
 
+    // Because this comes first, exclusion takes precedence.
     // Don't instrument the class if it matches an excluded regular expression.
     for (Pattern pattern : Runtime.ppt_omit_pattern) {
-
-      Matcher mPpt = pattern.matcher(pptName);
-      Matcher mClass = pattern.matcher(className);
-      Matcher mMethod = pattern.matcher(methodName);
-
-      if (mPpt.find() || mClass.find() || mMethod.find()) {
+      if (pattern.matcher(pptName).find()
+          || pattern.matcher(className).find()
+          || pattern.matcher(methodName).find()) {
         debug_ppt_omit.log("ignoring %s, it matches ppt_omit regex %s%n", pptName, pattern);
         return true;
       }
@@ -167,20 +167,17 @@ public class Instrument24 implements ClassFileTransformer {
     // If any include regular expressions are specified, only instrument
     // classes that match them.
     for (Pattern pattern : Runtime.ppt_select_pattern) {
-
-      Matcher mPpt = pattern.matcher(pptName);
-      Matcher mClass = pattern.matcher(className);
-      Matcher mMethod = pattern.matcher(methodName);
-
-      if (mPpt.find() || mClass.find() || mMethod.find()) {
+      if (pattern.matcher(pptName).find()
+          || pattern.matcher(className).find()
+          || pattern.matcher(methodName).find()) {
         debug_ppt_omit.log("including %s, it matches ppt_select regex %s%n", pptName, pattern);
         return false;
       }
     }
 
-    // If we're here, this ppt is not explicitly included or excluded,
-    // so keep unless there were items in the "include only" list.
-    if (Runtime.ppt_select_pattern.size() > 0) {
+    // If we're here, this ppt is not explicitly included or excluded.
+    // Keep unless there were items in the "include only" list.
+    if (!Runtime.ppt_select_pattern.isEmpty()) {
       debug_ppt_omit.log("ignoring %s, not included in ppt_select patterns%n", pptName);
       return true;
     } else {
@@ -190,19 +187,20 @@ public class Instrument24 implements ClassFileTransformer {
   }
 
   /**
-   * Don't instrument boot classes. They are uninteresting and will not be able to access
-   * daikon.chicory.Runtime (because it is not on the boot classpath). Previously this code skipped
-   * classes that started with java, com, javax, or sun, but this is not correct in many cases. Most
-   * boot classes have the null loader, but some generated classes (such as those in sun.reflect)
-   * will have a non-null loader. Some of these have a null parent loader, but some do not. The
-   * check for the sun.reflect package is a hack to catch all of these. A more consistent mechanism
-   * to determine boot classes would be preferable.
+   * Don't instrument boot classes. They are not relevant to the user and cannot access
+   * daikon.chicory.Runtime (because it is not on the boot classpath).
+   *
+   * <p>Most boot classes have the null loader, but some generated classes (such as those in
+   * sun.reflect) will have a non-null loader. Some of these have a null parent loader, but some do
+   * not. The check for the sun.reflect package is a hack to catch all of these. A more consistent
+   * mechanism to determine boot classes would be preferable.
    *
    * @param className class name to be checked
    * @param loader the class loader for the class
    * @return true if this is a boot class
    */
   private boolean isBootClass(@BinaryName String className, @Nullable ClassLoader loader) {
+    // Chicory.boot_classes is extra classes specified by the user.
     if (Chicory.boot_classes != null) {
       Matcher matcher = Chicory.boot_classes.matcher(className);
       if (matcher.find()) {
@@ -227,22 +225,24 @@ public class Instrument24 implements ClassFileTransformer {
   }
 
   /**
-   * Output a .class file and a .bcel version of the class file.
+   * Write a .class file and a .bcel version of the class file.
    *
-   * @param classBytes a byte array of the class file to output
+   * @param classBytes a byte array of the class file to output. This is the whole classfile, not
+   *     just the bytecodes part of it.
    * @param directory output location for the files
    * @param className the current class
    */
-  private void outputDebugFiles(byte[] classBytes, File directory, @BinaryName String className) {
-    // Convert the classBytes to a BCEL JavaClass
+  private void writeDebugClassFiles(
+      byte[] classBytes, File directory, @BinaryName String className) {
+    // Create a BCEL JavaClass.
     JavaClass c;
     try (ByteArrayInputStream bais = new ByteArrayInputStream(classBytes)) {
       ClassParser parser = new ClassParser(bais, className);
       c = parser.parse();
     } catch (Throwable t) {
-      System.err.printf("Unexpected error %s while reading %s%n", t, className);
+      System.err.printf("Unexpected error %s while parsing the bytes of %s%n", t, className);
       t.printStackTrace();
-      // ignore the error, it shouldn't affect the instrumentation
+      // Ignore the error, it shouldn't affect the instrumentation.
       return;
     }
 
@@ -256,7 +256,7 @@ public class Instrument24 implements ClassFileTransformer {
     } catch (Throwable t) {
       System.err.printf("Unexpected error %s writing debug files for: %s%n", t, className);
       t.printStackTrace();
-      // ignore the error, it shouldn't affect the instrumentation
+      // Ignore the error, it shouldn't affect the instrumentation.
     }
   }
 
@@ -276,7 +276,7 @@ public class Instrument24 implements ClassFileTransformer {
       byte[] classfileBuffer)
       throws IllegalClassFormatException {
 
-    // for debugging
+    // For debugging.
     // new Throwable().printStackTrace();
 
     debug_transform.log("Entering chicory.Instrument24.transform(): class = %s%n", className);
@@ -288,7 +288,7 @@ public class Instrument24 implements ClassFileTransformer {
     }
 
     // Don't instrument our own code.
-    if (isChicory(className)) {
+    if (isChicoryClass(className)) {
       debug_transform.log("Not transforming Chicory class %s%n", binaryClassName);
       return null;
     }
@@ -296,11 +296,11 @@ public class Instrument24 implements ClassFileTransformer {
     ClassLoader cfLoader;
     if (loader == null) {
       cfLoader = ClassLoader.getSystemClassLoader();
-      debug_transform.log("Transforming class %s, loader %s - %s%n", className, loader, cfLoader);
+      debug_transform.log("Transforming class %s, loaders %s, %s%n", className, loader, cfLoader);
     } else {
       cfLoader = loader;
       debug_transform.log(
-          "Transforming class %s, loader %s - %s%n", className, loader, loader.getParent());
+          "Transforming class %s, loaders %s, %s%n", className, loader, loader.getParent());
     }
 
     // Parse the bytes of the classfile, die on any errors.
@@ -308,25 +308,24 @@ public class Instrument24 implements ClassFileTransformer {
         ClassFile.of(
             ClassFile.ClassHierarchyResolverOption.of(
                 ClassHierarchyResolver.ofResourceParsing(cfLoader)));
-
     ClassModel classModel;
     try {
       classModel = classFile.parse(classfileBuffer);
     } catch (Throwable t) {
-      System.err.printf("Unexpected error %s while reading %s%n", t, binaryClassName);
+      System.err.printf("Unexpected error %s while parsing bytes of %s%n", t, binaryClassName);
       t.printStackTrace();
-      // No changes to the bytecodes
+      // No changes to the bytecodes.
       return null;
     }
 
     if (Chicory.dump) {
-      outputDebugFiles(
+      writeDebugClassFiles(
           classFile.transformClass(classModel, ClassTransform.ACCEPT_ALL),
           debug_uninstrumented_dir,
           binaryClassName);
     }
 
-    // Instrument the classfile, die on any errors
+    // Instrument the classfile, die on any errors.
     ClassInfo classInfo = new ClassInfo(binaryClassName, cfLoader);
     byte[] newBytes = {};
     debug_transform.log("%nTransforming: %s%n", binaryClassName);
@@ -345,12 +344,12 @@ public class Instrument24 implements ClassFileTransformer {
 
     if (classInfo.shouldInclude) {
       if (Chicory.dump) {
-        outputDebugFiles(newBytes, debug_instrumented_dir, binaryClassName);
+        writeDebugClassFiles(newBytes, debug_instrumented_dir, binaryClassName);
       }
       return newBytes;
     } else {
       debug_transform.log("Didn't instrument %s%n", binaryClassName);
-      // No changes to the bytecodes
+      // No changes to the bytecodes.
       return null;
     }
   }
@@ -383,7 +382,9 @@ public class Instrument24 implements ClassFileTransformer {
     // Modify each non-void method to save its result in a local variable before returning.
     instrument_all_methods(classModel, classBuilder, classInfo);
 
-    // Remember any constant static fields.
+    // Store constant static fields in `classInfo`.
+    // This ought to be a method of ClassInfo, but that wouldn't work with both Instrument.java and
+    // Instrument24.java.
     List<FieldModel> fields = classModel.fields();
     for (FieldModel fm : fields) {
       Optional<ConstantValueAttribute> cva = fm.findAttribute(Attributes.constantValue());
@@ -417,19 +418,17 @@ public class Instrument24 implements ClassFileTransformer {
 
         CodeElement inst = li.next();
 
-        // Back up iterator to point to 'inst'.
-        li.previous();
-
         // Get the translation for this instruction (if any).
         if (inst instanceof ReturnInstruction) {
+          // Back up iterator to point before 'inst'.
+          li.previous();
           // Insert code prior to 'inst'.
           for (CodeElement ce : call_initNotify(mgen.getPoolBuilder(), classInfo)) {
             li.add(ce);
           }
+          // Skip over 'inst' we just inserted new_il in front of.
+          li.next();
         }
-
-        // Skip over 'inst' we just inserted new_il in front of.
-        li.next();
       }
     } catch (Exception e) {
       System.err.printf("Unexpected exception encountered: %s", e);
@@ -466,7 +465,7 @@ public class Instrument24 implements ClassFileTransformer {
    */
   private List<CodeElement> call_initNotify(ConstantPoolBuilder poolBuilder, ClassInfo classInfo) {
 
-    List<CodeElement> instructions = new ArrayList<>();
+    List<CodeElement> instructions = new ArrayList<>(2);
 
     MethodRefEntry mre =
         poolBuilder.methodRefEntry(runtimeCD, "initNotify", MethodTypeDesc.of(CD_void, CD_String));
@@ -491,20 +490,18 @@ public class Instrument24 implements ClassFileTransformer {
 
     if (classModel.majorVersion() < ClassFile.JAVA_6_VERSION) {
       System.out.printf(
-          "Chicory warning: ClassFile: %s - classfile version (%d) is out of date and may not be"
-              + " processed correctly.%n",
+          "Chicory warning: ClassFile: %s - classfile version %d may not be processed correctly.%n",
           classInfo.class_name, classModel.majorVersion());
     }
 
-    List<MethodInfo> method_infos = new ArrayList<>();
-
+    List<MethodModel> methods = classModel.methods();
+    List<MethodInfo> method_infos = new ArrayList<>(methods.size());
     boolean shouldInclude = false;
-
     try {
-      for (MethodModel mm : classModel.methods()) {
+      for (MethodModel mm : methods) {
 
-        // NOT SURE THIS APPLIES ANYMORE
-        // don't plan to use StackMapUtils
+        // NOT SURE THIS APPLIES ANYMORE.
+        // Don't plan to use StackMapUtils.
         // The class data in StackMapUtils is not thread safe,
         // allow only one method at a time to be instrumented.
         // DynComp does this by creating a new instrumentation object
@@ -512,7 +509,7 @@ public class Instrument24 implements ClassFileTransformer {
         synchronized (this) {
           MethodGen24 mgen = new MethodGen24(mm, classInfo.class_name, classBuilder);
 
-          // check for the class static initializer method
+          // check for the class static initializer method.
           if (mgen.getName().equals("<clinit>")) {
             classInfo.hasClinit = true;
             if (Chicory.checkStaticInit) {
@@ -534,7 +531,7 @@ public class Instrument24 implements ClassFileTransformer {
             continue;
           }
 
-          // Get the instruction list and skip methods with no instructions.
+          // Skip methods with no instructions.
           if (mgen.getInstructionList().isEmpty()) {
             // We are not going to instrument this method.
             // We need to copy it to the output class.
@@ -599,7 +596,7 @@ public class Instrument24 implements ClassFileTransformer {
             SharedData.methods.add(curMethodInfo);
           }
 
-          // Add entry instrumentation and instrument return instructions.
+          // Instrument entry and exits (return instructions).
           classBuilder.withMethod(
               mm.methodName().stringValue(),
               mm.methodTypeSymbol(),
@@ -613,12 +610,12 @@ public class Instrument24 implements ClassFileTransformer {
       e.printStackTrace();
     }
 
-    // Copy all other ClassElements to output class (unchanged).
+    // Copy all other ClassElements to output class unchanged.
     for (ClassElement ce : classModel) {
       debugInstrument.log("ClassElement: %s%n", ce);
       switch (ce) {
         case MethodModel mm -> {}
-        // Copy all other ClassElements to output class (unchanged).
+        // Copy all other ClassElements to output class unchanged.
         default -> classBuilder.with(ce);
       }
     }
@@ -628,7 +625,7 @@ public class Instrument24 implements ClassFileTransformer {
     classInfo.set_method_infos(method_infos);
 
     if (shouldInclude) {
-      debug_transform.log("Added trace info to class %s%n", classInfo);
+      debug_transform.log("Added trace instrumentation to class %s%n", classInfo);
       synchronized (SharedData.new_classes) {
         SharedData.new_classes.add(classInfo);
       }
@@ -636,17 +633,17 @@ public class Instrument24 implements ClassFileTransformer {
         SharedData.all_classes.add(classInfo);
       }
     } else { // not included
-      debug_transform.log("Trace info not added to class %s%n", classInfo);
+      debug_transform.log("Trace instrumentation not added to class %s%n", classInfo);
     }
     classInfo.shouldInclude = shouldInclude;
   }
 
   /**
-   * Copy the given method from the input class file to the output output class with no changes.
-   * Uses {@code copyMethod} to perform the actual copy.
+   * Copy the given method from the input class file to the output class with no changes. Uses
+   * {@code copyMethod} to perform the actual copy.
    *
    * @param classBuilder for the output class
-   * @param mm MethodModel describes the input method
+   * @param mm the input method
    * @param mgen describes the output method
    */
   private void outputMethodUnchanged(ClassBuilder classBuilder, MethodModel mm, MethodGen24 mgen) {
@@ -658,7 +655,7 @@ public class Instrument24 implements ClassFileTransformer {
   }
 
   /**
-   * Copy the given method from the input class file to the output output class with no changes.
+   * Copy the given method from the input class file to the output class with no changes.
    *
    * @param methodBuilder for the output class
    * @param methodModel describes the input method
@@ -672,7 +669,7 @@ public class Instrument24 implements ClassFileTransformer {
         case CodeModel codeModel ->
             methodBuilder.withCode(codeBuilder -> copyCode(codeBuilder, mgen.getInstructionList()));
 
-        // copy all other MethodElements to output class (unchanged)
+        // copy all other MethodElements to output class (unchanged).
         default -> methodBuilder.with(me);
       }
     }
@@ -693,12 +690,12 @@ public class Instrument24 implements ClassFileTransformer {
   }
 
   /**
-   * Instrument the given method using {@link #instrumentCode}.
+   * Instrument a method using {@link #instrumentCode}.
    *
    * @param methodBuilder for the given method
    * @param methodModel for the given method
    * @param mgen describes the given method
-   * @param curMethodInfo provides additional information about the method
+   * @param curMethodInfo additional information about the method
    * @param method_info_index the index of the method in SharedData.methods
    */
   private void instrumentMethod(
@@ -716,17 +713,17 @@ public class Instrument24 implements ClassFileTransformer {
                 codeBuilder ->
                     instrumentCode(codeBuilder, codeModel, mgen, curMethodInfo, method_info_index));
 
-        // copy all other MethodElements to output class (unchanged)
+        // Copy all other MethodElements to output class unchanged.
         default -> methodBuilder.with(me);
       }
     }
   }
 
   /**
-   * Insert the our instrumentation code into the instruction list for the given method. This
-   * includes adding instrumentation code at the entry and at each return from the method. In
-   * addition, it changes each return statement to first place the value being returned into a local
-   * and then return.
+   * Insert our instrumentation code into the instruction list for the given method. This includes
+   * adding instrumentation code at the entry and at each return from the method. In addition, it
+   * changes each return statement to first place the value being returned into a local and then
+   * return.
    *
    * @param instructions instruction list for method
    * @param mgen describes the given method
@@ -739,35 +736,34 @@ public class Instrument24 implements ClassFileTransformer {
       MethodInfo curMethodInfo,
       MethodGen24.MInfo24 minfo) {
 
-    // Add nonce local to matchup enter/exits
+    // Add nonce local that matches up enter/exits.
     addInstrumentationAtEntry(instructions, mgen, minfo);
 
     // debugInstrument.log("Modified code: %s%n", mgen.getMethod().getCode());
 
     assert curMethodInfo != null : "@AssumeAssertion(nullness): can't get here if null";
-    Iterator<Boolean> shouldIncludeIter = curMethodInfo.is_included.iterator();
     Iterator<Integer> exitLocationIter = curMethodInfo.exit_locations.iterator();
+    Iterator<Boolean> shouldIncludeIter = curMethodInfo.exit_location_is_included.iterator();
 
-    // instrument return instructions
+    // Instrument return instructions.
     ListIterator<CodeElement> li = instructions.listIterator();
     while (li.hasNext()) {
 
       CodeElement inst = li.next();
 
-      // back up iterator to point to 'inst'
-      li.previous();
-
-      // If this is a return instruction, insert method exit instrumentation
+      // If this is a return instruction, insert method exit instrumentation.
       List<CodeElement> new_il =
-          generate_return_instrumentation(inst, mgen, minfo, shouldIncludeIter, exitLocationIter);
-
-      // insert code prior to 'inst'
-      for (CodeElement ce : new_il) {
-        li.add(ce);
+          generate_return_instrumentation(inst, mgen, minfo, exitLocationIter, shouldIncludeIter);
+      if (!new_il.isEmpty()) {
+        // Back up iterator to point before 'inst'.
+        li.previous();
+        // Insert code prior to 'inst'.
+        for (CodeElement ce : new_il) {
+          li.add(ce);
+        }
+        // Skip over 'inst' we just inserted new_il in front of.
+        li.next();
       }
-
-      // skip over 'inst' we just inserted new_il in front of
-      li.next();
     }
   }
 
@@ -874,8 +870,8 @@ public class Instrument24 implements ClassFileTransformer {
    * @param inst the instruction to inspect, which might be a return instruction
    * @param mgen describes the given method
    * @param minfo for the given method's code
-   * @param shouldIncludeIter if true, instrument this return
    * @param exitLocationIter list of exit line numbers
+   * @param shouldIncludeIter if true, instrument this return
    * @return instruction list for instrumenting the return, or an empty list if {@code inst} is not
    *     a return or the return should not be instrumented
    */
@@ -884,8 +880,8 @@ public class Instrument24 implements ClassFileTransformer {
       CodeElement inst,
       MethodGen24 mgen,
       MethodGen24.MInfo24 minfo,
-      Iterator<Boolean> shouldIncludeIter,
-      Iterator<Integer> exitLocationIter) {
+      Iterator<Integer> exitLocationIter,
+      Iterator<Boolean> shouldIncludeIter) {
 
     if (!(inst instanceof ReturnInstruction)) {
       return Collections.emptyList();
@@ -895,27 +891,23 @@ public class Instrument24 implements ClassFileTransformer {
       throw new RuntimeException("Not enough entries in shouldIncludeIter");
     }
 
+    if (!exitLocationIter.hasNext()) {
+      throw new RuntimeException("Not enough exit locations in the exitLocationIter");
+    }
+
     boolean shouldInclude = shouldIncludeIter.next();
 
     if (!shouldInclude) {
       return Collections.emptyList();
     }
 
-    List<CodeElement> newCode = new ArrayList<>();
+    List<CodeElement> newCode = new ArrayList<>(2);
     ClassDesc type = mgen.getReturnType();
     if (!type.equals(CD_void)) {
       TypeKind typeKind = TypeKind.from(type);
       LocalVariable returnLocal = getReturnLocal(mgen, type, minfo);
-      if (typeKind.slotSize() == 1) {
-        newCode.add(StackInstruction.of(Opcode.DUP));
-      } else {
-        newCode.add(StackInstruction.of(Opcode.DUP2));
-      }
+      newCode.add(StackInstruction.of(typeKind.slotSize() == 1 ? Opcode.DUP : Opcode.DUP2));
       newCode.add(StoreInstruction.of(typeKind, returnLocal.slot()));
-    }
-
-    if (!exitLocationIter.hasNext()) {
-      throw new RuntimeException("Not enough exit locations in the exitLocationIter");
     }
 
     callEnterOrExit(newCode, mgen, minfo, "exit", exitLocationIter.next());
@@ -926,9 +918,9 @@ public class Instrument24 implements ClassFileTransformer {
    * Returns the local variable used to store the return result. If it is not present, creates it
    * with the specified type. If the variable is known to already exist, the type can be null.
    *
-   * @param mgen describes the given method
+   * @param mgen describes a method
    * @param returnType the type of the return; may be null if the variable is known to already exist
-   * @param minfo for the given method's code
+   * @param minfo the method's code
    * @return a local variable to save the return value
    */
   @SuppressWarnings("nullness")
@@ -962,15 +954,15 @@ public class Instrument24 implements ClassFileTransformer {
     String atomic_int_classname = "java.util.concurrent.atomic.AtomicInteger";
     ClassDesc atomic_intClassDesc = ClassDesc.of(atomic_int_classname);
 
-    List<CodeElement> newCode = new ArrayList<>();
+    List<CodeElement> newCode = new ArrayList<>(3);
 
-    // create the nonce local variable
+    // Create the nonce local variable.
     minfo.nonceLocal = createLocalWithMethodScope(mgen, minfo, "this_invocation_nonce", CD_int);
 
     // The following implements:
     //     this_invocation_nonce = Runtime.nonce++;
 
-    // getstatic Runtime.nonce (load reference to AtomicInteger daikon.chicory.Runtime.nonce)
+    // getstatic Runtime.nonce (load reference to AtomicInteger daikon.chicory.Runtime.nonce).
     newCode.add(
         FieldInstruction.of(
             Opcode.GETSTATIC,
@@ -983,7 +975,7 @@ public class Instrument24 implements ClassFileTransformer {
             .methodRefEntry(atomic_intClassDesc, "getAndIncrement", MethodTypeDesc.of(CD_int));
     newCode.add(InvokeInstruction.of(Opcode.INVOKEVIRTUAL, mre));
 
-    // store original value of nonce into this_invocation_nonce)
+    // Store original value of nonce into this_invocation_nonce.
     assert minfo.nonceLocal != null : "@AssumeAssertion(nullness): can't get here if null";
     newCode.add(StoreInstruction.of(TypeKind.INT, minfo.nonceLocal.slot()));
 
@@ -991,14 +983,12 @@ public class Instrument24 implements ClassFileTransformer {
   }
 
   /**
-   * Inserts the given instrumentation code at the start of the method. This includes adding a local
-   * variable (this_invocation_nonce) that is initialized to Runtime.nonce++. This provides a unique
-   * id on each method entry/exit that allows them to be matched up from the dtrace file. Inserts
-   * code to call daikon.chicory.Runtime.enter().
+   * Inserts instrumentation code at the start of the method. Adds a local variable. Inserts code to
+   * call daikon.chicory.Runtime.enter().
    *
-   * @param instructions instruction list for method
-   * @param mgen describes the given method
-   * @param minfo for the given method's code
+   * @param instructions instruction list for a method
+   * @param mgen describes the method
+   * @param minfo for the method's code
    */
   private void addInstrumentationAtEntry(
       List<CodeElement> instructions, MethodGen24 mgen, MethodGen24.MInfo24 minfo) {
@@ -1031,7 +1021,7 @@ public class Instrument24 implements ClassFileTransformer {
       minfo.labelMap.put(inst, minfo.entryLabel);
 
       // Insert code before this LineNumber or Instruction.
-      // Back up iterator to point to 'inst'.
+      // Back up iterator to point before 'inst'.
       li.previous();
       for (CodeElement ce : newCode) {
         li.add(ce);
@@ -1064,10 +1054,12 @@ public class Instrument24 implements ClassFileTransformer {
     ClassDesc[] paramTypes = mgen.getParameterTypes();
 
     // aload
-    // Push the object.  Push null if this is a static method or a constructor.
+    // Push the object.
     if (mgen.isStatic() || (methodToCall.equals("enter") && isConstructor(mgen))) {
+      // Push null if this is a static method or a constructor.
       newCode.add(ConstantInstruction.ofIntrinsic(Opcode.ACONST_NULL));
-    } else { // must be an instance method
+    } else {
+      // Must be an instance method.
       newCode.add(LoadInstruction.of(TypeKind.REFERENCE, 0));
     }
 
@@ -1121,7 +1113,7 @@ public class Instrument24 implements ClassFileTransformer {
         }
       }
 
-      // push line number
+      // push line number.
       newCode.add(loadIntegerConstant(line, mgen));
     }
 
@@ -1138,7 +1130,7 @@ public class Instrument24 implements ClassFileTransformer {
     newCode.add(InvokeInstruction.of(Opcode.INVOKESTATIC, mre));
   }
 
-  /** Variables used for processing a switch instruction. */
+  /** Used for processing a switch instruction. */
   private static class ModifiedSwitchInfo {
 
     /** Possibly modified default switch target. */
@@ -1161,10 +1153,10 @@ public class Instrument24 implements ClassFileTransformer {
 
   /**
    * Checks to see if the instruction targets the method's CodeModel startLabel (held in
-   * oldStartLabel). If so, it replaces the target with the entryLabel. Unfortunately, the classfile
-   * API does not allow us to simply replace the label, we have to replace the entire instruction.
-   * Note that oldStartLabel may be null, but that is okay as any comparison to it will fail and we
-   * will do nothing.
+   * minfo.oldStartLabel). If so, it replaces the target with the minfo.entryLabel. Unfortunately,
+   * the classfile API does not allow us to simply replace the label, we have to replace the entire
+   * instruction. Note that oldStartLabel may be null, but that is okay as any comparison to it will
+   * fail and we will do nothing.
    *
    * @param inst the instruction to check
    * @param minfo for the given method's code
@@ -1203,7 +1195,7 @@ public class Instrument24 implements ClassFileTransformer {
 
   /**
    * Checks to see if a switch instruction's default target or any of the case targets refers to
-   * {@code minfo.oldStartLabel}. If so, replace those targets with the entryLabel, and return the
+   * {@code minfo.oldStartLabel}. If so, replace those targets with minfo.entryLabel, and return the
    * result in a ModifiedSwitchInfo. Otherwise, return null.
    *
    * @param defaultTarget the default target for the switch instruction
@@ -1331,7 +1323,7 @@ public class Instrument24 implements ClassFileTransformer {
    * @return the class name in ClassGetName format
    */
   @SuppressWarnings("signature") // conversion method
-  public static @ClassGetName String typeToClassGetName(ClassDesc t) {
+  public static @ClassGetName String classDescToClassGetName(ClassDesc t) {
     String s = t.descriptorString();
     if (s.startsWith("[")) {
       return s.replace('/', '.');
@@ -1341,30 +1333,24 @@ public class Instrument24 implements ClassFileTransformer {
   }
 
   /**
-   * Returns an array of strings, each corresponding to mgen's parameter types as a fully qualified
-   * name.
+   * Returns an array of fully qualified names, one for each of mgen's parameter types.
    *
    * @param mgen describes the given method
    * @return an array of strings, each corresponding to mgen's parameter types
    */
   @SuppressWarnings("signature") // conversion method
   private @BinaryName String[] getFullyQualifiedParameterTypes(MethodGen24 mgen) {
-
-    ClassDesc[] paramTypes = mgen.getParameterTypes();
-    @BinaryName String[] result = new @BinaryName String[paramTypes.length];
-
-    for (int i = 0; i < paramTypes.length; i++) {
-      result[i] = convertDescriptorToFqBinaryName(paramTypes[i].descriptorString());
-    }
-
-    return result;
+    return ArraysPlume.mapArray(
+        paramType -> convertDescriptorToFqBinaryName(paramType.descriptorString()),
+        mgen.getParameterTypes(),
+        String.class);
   }
 
   /**
-   * Creates a MethodInfo struct corresponding to {@code mgen}.
+   * Creates a MethodInfo corresponding to {@code mgen}.
    *
-   * @param classInfo a class
-   * @param mgen a method in the given class
+   * @param class_info class containing the method
+   * @param mg method to inspect
    * @return a new MethodInfo for the method, or null if the method should not be instrumented
    */
   private @Nullable MethodInfo create_method_info(ClassInfo classInfo, MethodGen24 mgen) {
@@ -1396,7 +1382,7 @@ public class Instrument24 implements ClassFileTransformer {
       String arg0Name = convertDescriptorToFqBinaryName(arg0Fd);
       if (dollarPos >= 0
           &&
-          // type of first parameter is classname up to the "$"
+          // type of first parameter is classname up to the "$".
           mgen.getClassName().substring(0, dollarPos).equals(arg0Name)) {
         // As a further check, for javac-generated classfiles, the
         // constant pool index #1 is "this$0", and the first 5 bytes of
@@ -1442,7 +1428,7 @@ public class Instrument24 implements ClassFileTransformer {
     ClassDesc[] paramTypes = mgen.getParameterTypes();
     @ClassGetName String[] arg_type_strings = new @ClassGetName String[paramTypes.length];
     for (int i = 0; i < paramTypes.length; i++) {
-      arg_type_strings[i] = typeToClassGetName(paramTypes[i]);
+      arg_type_strings[i] = classDescToClassGetName(paramTypes[i]);
     }
 
     if (debugInstrument.enabled) {
@@ -1454,7 +1440,7 @@ public class Instrument24 implements ClassFileTransformer {
     }
 
     // Loop through each instruction and find the line number for each return opcode.
-    List<Integer> exit_locs = new ArrayList<>();
+    List<Integer> exit_line_numbers = new ArrayList<>();
 
     // Tells whether each exit loc in the method is included or not (based on filters).
     List<Boolean> isIncluded = new ArrayList<>();
@@ -1462,7 +1448,7 @@ public class Instrument24 implements ClassFileTransformer {
     debugInstrument.log("Looking for exit points in %s%n", mgen.getName());
     List<CodeElement> il = mgen.getInstructionList();
     int line_number = 0;
-    int last_line_number = 0;
+    int prev_line_number = 0;
 
     for (CodeElement inst : il) {
       boolean foundLine = false;
@@ -1476,12 +1462,12 @@ public class Instrument24 implements ClassFileTransformer {
         debugInstrument.log("Exit at line %d%n", line_number);
 
         // Only do incremental lines if we don't have the line generator.
-        if (line_number == last_line_number && foundLine == false) {
+        if (line_number == prev_line_number && foundLine == false) {
           debugInstrument.log("Could not find line %d%n", line_number);
           line_number++;
         }
 
-        last_line_number = line_number;
+        prev_line_number = line_number;
 
         if (!shouldIgnore(
             classInfo.class_name,
@@ -1493,7 +1479,7 @@ public class Instrument24 implements ClassFileTransformer {
                 mgen.getName(),
                 line_number))) {
           shouldInclude = true;
-          exit_locs.add(line_number);
+          exit_line_numbers.add(line_number);
 
           isIncluded.add(true);
         } else {
@@ -1504,7 +1490,7 @@ public class Instrument24 implements ClassFileTransformer {
 
     if (shouldInclude) {
       return new MethodInfo(
-          classInfo, mgen.getName(), paramNames, arg_type_strings, exit_locs, isIncluded);
+          classInfo, mgen.getName(), paramNames, arg_type_strings, exit_line_numbers, isIncluded);
     } else {
       return null;
     }
@@ -1518,7 +1504,7 @@ public class Instrument24 implements ClassFileTransformer {
    * @return true if the given class is part of Chicory itself
    */
   @Pure
-  private static boolean isChicory(@InternalForm String classname) {
+  private static boolean isChicoryClass(@InternalForm String classname) {
 
     if (classname.startsWith("daikon/chicory/")
         && !classname.equals("daikon/chicory/ChicoryTest")) {
@@ -1558,8 +1544,8 @@ public class Instrument24 implements ClassFileTransformer {
    * descriptors, but some support for type arguments has been added.
    *
    * <p>The output format is an extension of binary name format that includes primitives and arrays.
-   * It is almost identical to a fully qualified name, but using “$” instead of “.” to separate
-   * nested classes from their enclosing classes.
+   * It is the same as a fully qualified name, but using “$” instead of “.” to separate nested
+   * classes from their enclosing classes.
    *
    * @param descriptor the object to format
    * @return a @FqBinaryName formatted string
@@ -1577,7 +1563,7 @@ public class Instrument24 implements ClassFileTransformer {
       descriptor = descriptorFd;
     }
 
-    // Convert primitive types
+    // Convert primitive types.
     switch (descriptor.charAt(0)) {
       case 'B':
         result.append("byte");
@@ -1613,7 +1599,7 @@ public class Instrument24 implements ClassFileTransformer {
         throw new IllegalArgumentException("Invalid descriptor: " + descriptor);
     }
 
-    // Append array brackets if applicable
+    // Append array brackets if applicable.
     for (int i = 0; i < arrayDimensions; i++) {
       result.append("[]");
     }
@@ -1635,14 +1621,14 @@ public class Instrument24 implements ClassFileTransformer {
     int endOfBaseType = descriptor.indexOf(';');
 
     if (genericStart > 0 && genericEnd > genericStart) {
-      // Base type with generics
+      // Base type with generics.
       String baseType = descriptor.substring(1, genericStart).replace('/', '.');
       result.append(baseType).append('<');
       String genericPart = descriptor.substring(genericStart + 1, genericEnd);
       result.append(typeArgumentsToBinaryNames(genericPart));
       result.append('>');
     } else if (endOfBaseType > 0) {
-      // Regular object type
+      // Regular object type.
       result.append(descriptor.substring(1, endOfBaseType).replace('/', '.'));
     } else {
       throw new IllegalArgumentException("Malformed object type descriptor: " + descriptor);

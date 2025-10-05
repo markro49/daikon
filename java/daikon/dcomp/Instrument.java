@@ -79,7 +79,7 @@ public class Instrument implements ClassFileTransformer {
    * @param directory output location for the files
    * @param className the current class
    */
-  private void outputDebugFiles(JavaClass c, File directory, @BinaryName String className) {
+  private void writeDebugClassFiles(JavaClass c, File directory, @BinaryName String className) {
     try {
       debug_transform.log("Dumping .class and .bcel for %s to %s%n", className, directory);
       // Write the byte array to a .class file.
@@ -233,7 +233,7 @@ public class Instrument implements ClassFileTransformer {
     }
 
     if (DynComp.dump) {
-      outputDebugFiles(c, debug_uninstrumented_dir, binaryClassName);
+      writeDebugClassFiles(c, debug_uninstrumented_dir, binaryClassName);
     }
 
     // Instrument the classfile, die on any errors
@@ -251,7 +251,7 @@ public class Instrument implements ClassFileTransformer {
 
     if (njc != null) {
       if (DynComp.dump) {
-        outputDebugFiles(njc, debug_instrumented_dir, binaryClassName);
+        writeDebugClassFiles(njc, debug_instrumented_dir, binaryClassName);
       }
       return njc.getBytes();
     } else {

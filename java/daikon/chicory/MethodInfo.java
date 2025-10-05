@@ -52,7 +52,7 @@ public class MethodInfo {
   public List<Integer> exit_locations;
 
   /** Tells whether each exit point in method is instrumented, based on filters. */
-  public List<Boolean> is_included;
+  public List<Boolean> exit_location_is_included;
 
   /**
    * The root of the variable tree for the method entry program point.
@@ -88,14 +88,14 @@ public class MethodInfo {
       String[] arg_names,
       @ClassGetName String[] arg_type_strings,
       List<Integer> exit_locations,
-      List<Boolean> is_included) {
+      List<Boolean> exit_location_is_included) {
 
     this.class_info = class_info;
     this.method_name = method_name;
     this.arg_names = arg_names;
     this.arg_type_strings = arg_type_strings;
     this.exit_locations = exit_locations;
-    this.is_included = is_included;
+    this.exit_location_is_included = exit_location_is_included;
   }
 
   // Use reserved keyword for basic type rather than signature to
