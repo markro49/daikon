@@ -1705,6 +1705,7 @@ public class Instrument24 implements ClassFileTransformer {
             minfo.nextLocalIndex, localName, localType, minfo.startLabel, minfo.endLabel);
     mgen.localsTable.add(newVar);
     minfo.nextLocalIndex += TypeKind.from(localType).slotSize();
+    mgen.setMaxLocals(minfo.nextLocalIndex);
     return newVar;
   }
 

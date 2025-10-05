@@ -415,7 +415,9 @@ public class DCInstrument extends InstructionListUtils {
     // We must also remember the class name so if we see a subsequent
     // call to one of its methods we do not add the dcomp argument.
 
-    debugInstrument.log("junit_state: %s%n", junit_state);
+    if (debugJUnitAnalysis) {
+      System.out.printf("junit_state 1: %s%n", junit_state);
+    }
 
     StackTraceElement[] stack_trace;
 
@@ -435,7 +437,7 @@ public class DCInstrument extends InstructionListUtils {
             System.out.printf(
                 "%s : %s%n", stack_trace[i].getClassName(), stack_trace[i].getMethodName());
           }
-          if (isJunitTrigger(stack_trace[i].getClassName(), stack_trace[i].getMethodName())) {
+          if (isJUnitTrigger(stack_trace[i].getClassName(), stack_trace[i].getMethodName())) {
             junit_parse_seen = true;
             junit_state = JUnitState.TEST_DISCOVERY;
             break;
@@ -453,7 +455,7 @@ public class DCInstrument extends InstructionListUtils {
             System.out.printf(
                 "%s : %s%n", stack_trace[i].getClassName(), stack_trace[i].getMethodName());
           }
-          if (isJunitTrigger(stack_trace[i].getClassName(), stack_trace[i].getMethodName())) {
+          if (isJUnitTrigger(stack_trace[i].getClassName(), stack_trace[i].getMethodName())) {
             local_junit_parse_seen = true;
             break;
           }
@@ -482,7 +484,9 @@ public class DCInstrument extends InstructionListUtils {
         throw new Error("invalid junit_state");
     }
 
-    debugInstrument.log("junit_state: %s%n", junit_state);
+    if (debugJUnitAnalysis) {
+      System.out.printf("junit_state 2: %s%n", junit_state);
+    }
 
     boolean junit_test_class = false;
     if (junit_state == JUnitState.TEST_DISCOVERY) {
@@ -504,7 +508,7 @@ public class DCInstrument extends InstructionListUtils {
           System.out.printf("super_class: %s%n", super_class);
         }
         if (super_class.equals("junit.framework.TestCase")) {
-          // This is a junit test class and so are the
+          // This is a JUnit test class and so are the
           // elements of classnameStack.
           junit_test_class = true;
           junitTestClasses.add(this_class);
@@ -513,7 +517,7 @@ public class DCInstrument extends InstructionListUtils {
           }
           break;
         } else if (super_class.equals("java.lang.Object")) {
-          // We're done; not a junit test class.
+          // We're done; not a JUnit test class.
           // Ignore items on classnameStack.
           break;
         }
@@ -528,7 +532,7 @@ public class DCInstrument extends InstructionListUtils {
     // needs to be marked as a JUnit test class. (Daikon issue #536)
 
     if (!junit_test_class) {
-      // need to check for junit Test annotation on a method
+      // need to check for JUnit Test annotation on a method
       searchloop:
       for (Method m : gen.getMethods()) {
         for (final Attribute attribute : m.getAttributes()) {
@@ -553,10 +557,12 @@ public class DCInstrument extends InstructionListUtils {
       }
     }
 
-    if (junit_test_class) {
-      debugInstrument.log("JUnit test class: %s%n", classname);
-    } else {
-      debugInstrument.log("Not a JUnit test class: %s%n", classname);
+    if (debugJUnitAnalysis) {
+      if (junit_test_class) {
+        System.out.printf("JUnit test class: %s%n", classname);
+      } else {
+        System.out.printf("Not a JUnit test class: %s%n", classname);
+      }
     }
 
     // Process each method
@@ -761,7 +767,7 @@ public class DCInstrument extends InstructionListUtils {
    * @param method_name method to be checked
    * @return true if the given method is a JUnit trigger
    */
-  boolean isJunitTrigger(String classname, String method_name) {
+  boolean isJUnitTrigger(String classname, String method_name) {
     if ((classname.contains("JUnitCommandLineParseResult")
             && method_name.equals("parse")) // JUnit 4
         || (classname.contains("EngineDiscoveryRequestResolution")
