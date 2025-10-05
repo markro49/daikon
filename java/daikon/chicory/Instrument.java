@@ -51,23 +51,23 @@ import org.checkerframework.checker.signature.qual.InternalForm;
 import org.checkerframework.dataflow.qual.Pure;
 
 /**
- * This class is responsible for modifying another class's bytecodes. Specifically, its main task is
- * to add calls into the Chicory runtime at method entries and exits for instrumentation purposes.
- * These added calls are sometimes referred to as "hooks".
+ * This class modifies another class's bytecodes. It adds calls into the Chicory runtime at method
+ * entries and exits for instrumentation purposes. These added calls are sometimes referred to as
+ * "hooks".
  *
  * <p>This class is loaded by ChicoryPremain at startup. It is a ClassFileTransformer which means
- * that its {@code transform} method gets called each time the JVM loads a class.
+ * that its {@link #transform} method gets called each time the JVM loads a class.
  */
 public class Instrument extends InstructionListUtils implements ClassFileTransformer {
 
-  /** The location of the runtime support class. */
+  /** The name of the Chicory runtime support class. */
   private static final String runtime_classname = "daikon.chicory.Runtime";
 
-  /** Debug information about which classes and/or methods are transformed and why. */
+  /** A log for debug information about which classes and/or methods are transformed and why. */
   protected static final SimpleLog debug_transform = new SimpleLog(false);
 
-  // Public so it can be enabled from daikon.dcomp.Instrument.
-  /** Debug information about ppt-omit and ppt-select. */
+  // Public so daikon.dcomp.Instrument can enable it.
+  /** A log for debug information about ppt-omit and ppt-select. */
   public static final SimpleLog debug_ppt_omit = new SimpleLog(false);
 
   /** Directory for debug output. */
