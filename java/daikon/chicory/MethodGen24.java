@@ -149,7 +149,7 @@ public class MethodGen24 {
   // TODO: Should uses of this be synchronized?
   private ConstantPoolBuilder poolBuilder;
 
-  /** Variables used for processing the current method. */
+  /** Used for processing the current method. */
   public static class MInfo24 {
 
     /** The index of this method in SharedData.methods. */

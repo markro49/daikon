@@ -2768,7 +2768,7 @@ public class DCInstrument extends InstructionListUtils {
    *
    * @param class_info class containing the method
    * @param mg method to inspect
-   * @return MethodInfo for the method
+   * @return a new MethodInfo for the method, or null if the method should not be instrumented
    */
   @Nullable MethodInfo create_method_info(ClassInfo class_info, MethodGen mg) {
 
@@ -2799,7 +2799,7 @@ public class DCInstrument extends InstructionListUtils {
 
     // Loop through each instruction and find the line number for each
     // return opcode
-    List<Integer> exit_locs = new ArrayList<>();
+    List<Integer> exit_line_numbers = new ArrayList<>();
 
     // Tells whether each exit loc in the method is included or not
     // (based on filters)
@@ -2808,7 +2808,7 @@ public class DCInstrument extends InstructionListUtils {
     // log ("Looking for exit points in %s%n", mg.getName());
     InstructionList il = mg.getInstructionList();
     int line_number = 0;
-    int last_line_number = 0;
+    int prev_line_number = 0;
     boolean foundLine;
 
     if (il == null) {
@@ -2840,12 +2840,12 @@ public class DCInstrument extends InstructionListUtils {
         case Const.RETURN:
           // log ("Exit at line %d%n", line_number);
           // only do incremental lines if we don't have the line generator
-          if (line_number == last_line_number && foundLine == false) {
+          if (line_number == prev_line_number && foundLine == false) {
             line_number++;
           }
-          last_line_number = line_number;
+          prev_line_number = line_number;
 
-          exit_locs.add(line_number);
+          exit_line_numbers.add(line_number);
           isIncluded.add(true);
           break;
 
@@ -2855,7 +2855,7 @@ public class DCInstrument extends InstructionListUtils {
     }
 
     return new MethodInfo(
-        class_info, mg.getName(), argNames, arg_type_strings, exit_locs, isIncluded);
+        class_info, mg.getName(), argNames, arg_type_strings, exit_line_numbers, isIncluded);
   }
 
   /**
