@@ -47,7 +47,7 @@ import org.checkerframework.dataflow.qual.SideEffectFree;
 @SuppressWarnings({
   "JavaLangClash" // same class name as one in java.lang.
 })
-public class Runtime {
+public final class Runtime {
   /** Unique id for method entry/exit (so they can be matched up) */
   public static AtomicInteger nonce = new AtomicInteger();
 
@@ -532,12 +532,12 @@ public class Runtime {
       // System.out.println("Attempting to connect to Daikon on port --- " + port);
       daikonSocket.connect(new InetSocketAddress(InetAddress.getLocalHost(), port), 5000);
     } catch (UnknownHostException e) {
-      System.out.println(
+      System.err.println(
           "UnknownHostException connecting to Daikon : " + e.getMessage() + ". Exiting");
       System.exit(1);
       throw new Error("Unreachable control flow");
     } catch (IOException e) {
-      System.out.println(
+      System.err.println(
           "IOException, could not connect to Daikon : " + e.getMessage() + ". Exiting");
       System.exit(1);
       throw new Error("Unreachable control flow");
@@ -548,7 +548,7 @@ public class Runtime {
           new PrintWriter(
               new BufferedWriter(new OutputStreamWriter(daikonSocket.getOutputStream(), UTF_8)));
     } catch (IOException e) {
-      System.out.println("IOException connecting to Daikon : " + e.getMessage() + ". Exiting");
+      System.err.println("IOException connecting to Daikon : " + e.getMessage() + ". Exiting");
       System.exit(1);
     }
 
