@@ -399,7 +399,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
   }
 
   /**
-   * Called by {@link #addInvokeToClinit} to obtain the instructions that represent a call to the
+   * Called by {@link #addInitNotifyCalls} to obtain the instructions that represent a call to the
    * Chicory Runtime {@code initNotify} method prior to a return opcode. Returns null if the given
    * instruction is not a return.
    *
