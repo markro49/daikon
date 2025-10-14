@@ -268,8 +268,13 @@ public class DCInstrument extends InstructionListUtils {
     new MethodDef("wait", new Type[] {Type.LONG, Type.INT}),
   };
 
+  /** Catch block for our handler. */
   protected static InstructionList global_catch_il = null;
+
+  /** Handler we add to surround entire method. */
   protected static CodeExceptionGen global_exception_handler = null;
+
+  /** Temporary location of runtime initialization code. */
   private InstructionHandle insertion_placeholder;
 
   /** Class that defines a method (by its name and argument types) */
