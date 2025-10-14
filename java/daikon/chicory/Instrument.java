@@ -1133,6 +1133,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
    * @param mgen describes the given method
    * @return an array of strings, each corresponding to mgen's parameter types
    */
+  @SuppressWarnings("signature") // BCEL is not annotated
   private @BinaryName String[] getFullyQualifiedParameterTypes(MethodGen mgen) {
     return ArraysPlume.mapArray(Type::toString, mgen.getArgumentTypes(), String.class);
   }
