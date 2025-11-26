@@ -58,10 +58,8 @@ import org.checkerframework.checker.signature.qual.BinaryName;
 }) // assignments into owning collection
 public final class BuildJDK24 {
 
-  /** Do not instantiate. */
-  private BuildJDK24() {
-    throw new Error("Do not instantiate");
-  }
+  /** Do not instantiate from external code; only instantiate in {@link #main}. */
+  private BuildJDK24() {}
 
   /**
    * The "java.home" system property. Note that there is also a JAVA_HOME variable that contains
