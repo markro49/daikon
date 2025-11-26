@@ -59,16 +59,17 @@ public final class CalcStack24 {
   static final ClassDesc nullCD = ClassDesc.of("fake.ClassDecs.for.null");
 
   /**
-   * Calculates changes in contents of operand stack based on the symbolic execution of a Java
-   * bytecode instruction. Note that we assume the class file is valid and make no attempt to verify
-   * the code's correctness.
+   * Calculates changes in the operand stack based on the symbolic execution of a Java bytecode
+   * instruction. Note that we assume the class file is valid and make no attempt to verify the
+   * code's correctness.
    *
    * @param mgen method containing the instruction (currently unused)
    * @param minfo for the given method's code (currently unused)
    * @param ce instruction to be interpreted
    * @param inst_index index of ce in code element list
-   * @param stack current state of operand stack
-   * @return true if should continue with next instruction, false otherwise
+   * @param stack current state of operand stack; is side-effected
+   * @return true if control falls through to the next instruction, false otherwise (when {@code ce}
+   *     is an instruction like jump or return)
    */
   @SuppressWarnings("fallthrough")
   static boolean calcOperandStack(
@@ -97,8 +98,8 @@ public final class CalcStack24 {
         switch (inst.opcode()) {
 
           // operand stack:
-          // ..., arrayref, index
-          // ..., value
+          // operand stack before: ..., arrayref, index
+          // operand stack after:  ..., value
           case Opcode.AALOAD:
             {
               stack.pop(); // discard the index
