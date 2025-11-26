@@ -545,7 +545,7 @@ public class MethodGen24 {
   }
 
   /**
-   * Returns true if this is a standard main method (static, void, name is 'main', and one formal
+   * Returns true if this is a standard main method (static, void, name is "main", and one formal
    * parameter: a string array).
    *
    * @return true iff the method is a main method

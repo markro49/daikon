@@ -55,7 +55,7 @@ public final class CalcStack24 {
     throw new Error("Do not instantiate");
   }
 
-  /** ClassDesc for 'null'. */
+  /** ClassDesc for {@code null}. */
   static final ClassDesc nullCD = ClassDesc.of("fake.ClassDecs.for.null");
 
   /**
