@@ -162,7 +162,7 @@ public final class BcelUtils24 {
       // Update the method's parameter information.
       argTypes = ArraysPlume.append(argTypes, argType);
       @SuppressWarnings("signature:assignment") // string manipulation
-      @Identifier String[] argNames = ArraysPlume.append(mgen.getParameterNames(), argName);
+      @Identifier String[] argNames = ArraysPlume.<@Identifier String>append(mgen.getParameterNames(), argName);
       mgen.setParameterTypes(argTypes);
       mgen.setParameterNames(argNames);
     }
