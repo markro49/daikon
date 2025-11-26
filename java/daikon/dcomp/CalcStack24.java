@@ -806,7 +806,8 @@ public final class CalcStack24 {
                 eltDescriptor = "S";
               }
               default -> {
-                throw new DynCompError("unknown primitive array type " + npai + " in: " + inst);
+                throw new DynCompError(
+                    "unknown primitive type " + npai.typeKind() + " in: " + inst);
               }
             }
             stack.push(ClassDesc.ofDescriptor("[" + eltDescriptor));
@@ -850,7 +851,7 @@ public final class CalcStack24 {
           // Consider throwing an UnsupportedOperationException for these opcodes
           // if we're only supporting modern class files (version 51.0+).
           // Currently maintaining support for completeness.
-
+          // operand stack: no change
           case Opcode.RET:
           case Opcode.RET_W:
             // the variable referenced must contain a return address
@@ -895,7 +896,7 @@ public final class CalcStack24 {
               final MethodTypeDesc mtd = ii.typeSymbol();
               stack.pop(mtd.parameterCount()); // discard the arguments
               // We are sure the invoked method will xRETURN eventually.
-              // We simulate xRETURNs functionality here because we don't
+              // We simulate xRETURN's functionality here because we don't
               // really "jump into" and simulate the invoked method.
               final ClassDesc rt = mtd.returnType();
               if (!rt.equals(CD_void)) {
@@ -936,13 +937,12 @@ public final class CalcStack24 {
       // Technically, a Classfile element, not a PseudoInstruction.
       case Label l -> {
         if (DCInstrument24.stacks[inst_index] != null) {
-          // we've seen this label before
-          // will throw if stacks don't match
+          // We've seen this label before.
           DCInstrument24.verifyOperandStackMatches(l, DCInstrument24.stacks[inst_index], stack);
-          // stacks match; we're done with this worklist
+          // Stacks match; we're done with this worklist.
           return false;
         } else {
-          // have not seen this label before; remember state of operand stack
+          // We have not seen this label before; remember the operand stack.
           DCInstrument24.stacks[inst_index] = stack.getClone();
           if (DCInstrument24.debugOperandStack) {
             System.out.println("save stack state at: " + l);
