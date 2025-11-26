@@ -782,9 +782,7 @@ public class DCInstrument24 {
       throw e;
     } catch (Throwable t) {
       throw new DynCompError(
-          String.format(
-              "Error processing %s.%s.%n", mgen.getClassName(), mgen.getName()),
-          t);
+          String.format("Error processing %s.%s.%n", mgen.getClassName(), mgen.getName()), t);
     }
   }
 
@@ -1133,8 +1131,7 @@ public class DCInstrument24 {
     } catch (DynCompError e) {
       throw e;
     } catch (Throwable t) {
-      throw new DynCompError(
-          "Error processing " + classInfo.class_name + "." + mgen.getName(), t);
+      throw new DynCompError("Error processing " + classInfo.class_name + "." + mgen.getName(), t);
     }
   }
 
@@ -1633,9 +1630,7 @@ public class DCInstrument24 {
       throw e;
     } catch (Throwable t) {
       throw new DynCompError(
-          String.format(
-              "Error processing %s.%s.%n", mgen.getClassName(), mgen.getName()),
-          t);
+          String.format("Error processing %s.%s.%n", mgen.getClassName(), mgen.getName()), t);
     }
   }
 
