@@ -105,7 +105,7 @@ public final class CalcStack24 {
               final ClassDesc t = stack.pop(); // pop the arrayref
               if (t == null || nullCD.equals(t)) {
                 // Push nullCD to maintain stack consistency. The actual NullPointerException
-                // will be thrown at runtime if this code path is executed, not during
+                // will be thrown at run time if this code path is executed, not during
                 // instrumentation.
                 stack.push(nullCD);
               } else {
@@ -219,7 +219,7 @@ public final class CalcStack24 {
             // execution pump will reset stack
             return false;
 
-          // UNDONE: the JVM says result is int, but should we track 'true' type?
+          // UNDONE: the JVM says result is int, but should we track the type more precisely?
           // operand stack before: ..., arrayref, index
           // operand stack after:  ..., value
           case Opcode.BALOAD:
@@ -557,7 +557,7 @@ public final class CalcStack24 {
               return false;
             }
 
-          // UNDONE: the JVM says result is int, but should we track 'true' type?
+          // UNDONE: the JVM says result is int, but should we track the type more precisely?
           // operand stack before: ..., value
           // operand stack after:  ..., result
           case Opcode.I2B: // integer to byte
@@ -643,7 +643,7 @@ public final class CalcStack24 {
             stack.push(CD_int);
             return true;
 
-          // UNDONE: the JVM says result is int, but should we track 'true' type?
+          // UNDONE: the JVM says result is int, but should we track the type more precisely?
           // operand stack before: ..., objectref
           // operand stack after:  ..., result
           case Opcode.INSTANCEOF:
@@ -779,37 +779,37 @@ public final class CalcStack24 {
           case Opcode.NEWARRAY:
             stack.pop(); // discard the count
             final NewPrimitiveArrayInstruction npai = (NewPrimitiveArrayInstruction) inst;
-            String descriptor;
+            String eltDescriptor;
             switch (npai.typeKind()) {
               case BOOLEAN -> {
-                descriptor = "[Z";
+                eltDescriptor = "Z";
               }
               case BYTE -> {
-                descriptor = "[B";
+                eltDescriptor = "B";
               }
               case CHAR -> {
-                descriptor = "[C";
+                eltDescriptor = "C";
               }
               case DOUBLE -> {
-                descriptor = "[D";
+                eltDescriptor = "D";
               }
               case FLOAT -> {
-                descriptor = "[F";
+                eltDescriptor = "F";
               }
               case INT -> {
-                descriptor = "[I";
+                eltDescriptor = "I";
               }
               case LONG -> {
-                descriptor = "[J";
+                eltDescriptor = "J";
               }
               case SHORT -> {
-                descriptor = "[S";
+                eltDescriptor = "S";
               }
               default -> {
-                throw new DynCompError("unknown primitive array type: " + inst);
+                throw new DynCompError("unknown primitive array type " + npai + " in: " + inst);
               }
             }
-            stack.push(ClassDesc.ofDescriptor(descriptor));
+            stack.push(ClassDesc.ofDescriptor("[" + eltDescriptor));
             return true;
 
           // operand stack before: ..., value
