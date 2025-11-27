@@ -114,6 +114,7 @@ import org.checkerframework.checker.signature.qual.BinaryName;
 import org.checkerframework.checker.signature.qual.ClassGetName;
 import org.checkerframework.checker.signature.qual.DotSeparatedIdentifiers;
 import org.checkerframework.checker.signature.qual.FieldDescriptor;
+import org.checkerframework.checker.signature.qual.InternalForm;
 import org.checkerframework.checker.signature.qual.MethodDescriptor;
 import org.checkerframework.dataflow.qual.Pure;
 
@@ -2500,10 +2501,11 @@ public class DCInstrument24 {
    */
   private List<CodeElement> handleInvoke(InvokeInstruction invoke, MethodGen24 mgen) {
 
-    // Get information about the call
-    @BinaryName String classname = invoke.owner().asInternalName().replace('/', '.');
+    // Get information about the call.
+    @SuppressWarnings("signature:assignment") // JDK java.lang.classfile 24 is not yet annotated
+    @InternalForm String classnameInternalForm = invoke.owner().asInternalName();
+    @BinaryName String classname = classnameInternalForm.replace('/', '.');
     String methodName = invoke.name().stringValue();
-    @SuppressWarnings("signature:assignment") // JDK 24 is not annotated as yet
     MethodTypeDesc mtd = invoke.typeSymbol();
     ClassDesc returnType = mtd.returnType();
     ClassDesc[] paramTypes = mtd.parameterArray();
