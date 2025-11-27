@@ -339,7 +339,7 @@ public class DCInstrument extends InstructionListUtils {
     @Pure
     @Override
     public int hashCode(@GuardSatisfied MethodDef this) {
-      return Objects.hash(name, arg_types);
+      return Objects.hash(name, Arrays.hashCode(arg_types));
     }
   }
 
