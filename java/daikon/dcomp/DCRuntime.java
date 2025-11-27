@@ -231,7 +231,7 @@ public final class DCRuntime implements ComparabilityProvider {
       Class<Object> tmp = (Class<Object>) Class.forName("java.lang.Object");
       java_lang_Object_class = tmp;
     } catch (Exception e) {
-      throw new RuntimeException("Error initializing DCRuntime:", e);
+      throw new RuntimeException("Error initializing DCRuntime", e);
     }
 
     // Initialize the array of static tags
@@ -282,7 +282,7 @@ public final class DCRuntime implements ComparabilityProvider {
     } catch (NoSuchMethodException e) {
       m = null;
     } catch (Exception e) {
-      throw new RuntimeException("Error locating equal_dcomp_instrumented", e);
+      throw new RuntimeException("Error locating equals_dcomp_instrumented", e);
     }
 
     if (m != null) {
@@ -291,7 +291,7 @@ public final class DCRuntime implements ComparabilityProvider {
         m.setAccessible(true);
         return (Boolean) m.invoke(o1, o2);
       } catch (Exception e) {
-        throw new RuntimeException("Error invoking equal_dcomp_instrumented", e);
+        throw new RuntimeException("Error invoking equals_dcomp_instrumented", e);
       }
     }
 
