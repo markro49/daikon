@@ -117,7 +117,7 @@ public final class BcelUtils24 {
    */
   public static LocalVariable addNewSpecialLocal(
       MethodGen24 mgen,
-      String argName,
+      @Identifier String argName,
       ClassDesc argType,
       MethodGen24.MInfo24 minfo,
       boolean isParam) {
@@ -161,7 +161,6 @@ public final class BcelUtils24 {
     if (isParam) {
       // Update the method's parameter information.
       argTypes = ArraysPlume.append(argTypes, argType);
-      @SuppressWarnings("signature:assignment") // string manipulation
       @Identifier String[] argNames = ArraysPlume.<@Identifier String>append(mgen.getParameterNames(), argName);
       mgen.setParameterTypes(argTypes);
       mgen.setParameterNames(argNames);
