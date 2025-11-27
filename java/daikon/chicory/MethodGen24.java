@@ -56,29 +56,33 @@ public class MethodGen24 {
    * Instructions; the order of elements of a code model is significant." May be null if the method
    * has no code.
    *
-   * <p>Several fields of MethodModel are declared as fields of MethodGen24 to better correspond to
-   * BCEL's version of MethodGen and to reduce re-computation. Currently we set these fields in the
-   * constructor, but they could be calculated lazily on first reference.
+   * <p>Several fields of MethodModel are cached as fields of MethodGen24 to better correspond to
+   * BCEL's version of MethodGen and to reduce re-computation.
    */
+
+  //
   // Start of MethodModel items.
+  //
 
   private @Nullable CodeModel code;
 
-  /** The method's access flags as a bit mask. */
+  /** This method's access flags as a bit mask. */
   private final int accessFlagsMask;
 
-  /** The method's name. */
+  /** This method's name. */
   private String methodName;
 
   /**
-   * The method's type descriptor. This contains information about the parameters and return type of
-   * the method.
+   * This method's type descriptor. This contains information about the parameters and return type
+   * of this method.
    */
   private MethodTypeDesc mtd;
 
+  //
   // End of MethodModel items.
+  //
 
-  /** True if the method is static. */
+  /** True if this method is static. */
   private boolean isStatic;
 
   /**
@@ -769,11 +773,11 @@ public class MethodGen24 {
     result.append(" " + methodName + "(");
     if (paramTypes.length > 0) {
       for (int i = 0; i < paramTypes.length; i++) {
-        String arg = convertClassDesc(paramTypes[i]);
+        String paramType = convertClassDesc(paramTypes[i]);
         if ((accessFlagsMask & ClassFile.ACC_VARARGS) != 0 && (i == (paramTypes.length - 1))) {
-          arg = arg.replace("[]", "...");
+          paramType = paramType.replace("[]", "...");
         }
-        result.append(arg + " " + paramNames[i] + ", ");
+        result.append(paramType + " " + paramNames[i] + ", ");
       }
       result.setLength(result.length() - 2); // remove last ", "
     }
