@@ -103,9 +103,9 @@ import org.checkerframework.dataflow.qual.Pure;
 /**
  * Instruments a class file to perform Dynamic Comparability.
  *
- * <p>The DCInstrument class is responsible for modifying another class's bytecodes. Specifically,
- * its main task is to add calls into the DynComp Runtime to calculate comparability values. These
- * added calls are sometimes referred to as "hooks".
+ * <p>The DCInstrument class is responsible for modifying bytecodes. Specifically, its main task is
+ * to add calls into the DynComp Runtime to calculate comparability values. These added calls are
+ * sometimes referred to as "hooks".
  */
 @SuppressWarnings("nullness")
 public class DCInstrument extends InstructionListUtils {
@@ -756,7 +756,7 @@ public class DCInstrument extends InstructionListUtils {
         if (debugInstrument.enabled) {
           t.printStackTrace();
         }
-        throw new Error("Unexpected error processing " + classname + "." + m.getName(), t);
+        throw new Error("Error processing " + classname + "." + m.getName(), t);
       }
     }
 
@@ -1018,9 +1018,9 @@ public class DCInstrument extends InstructionListUtils {
         }
         skip_method(mgen);
         if (quit_if_error) {
-          throw new Error("Unexpected error processing " + classname + "." + m.getName(), t);
+          throw new Error("Error processing " + classname + "." + m.getName(), t);
         } else {
-          System.err.printf("Unexpected error processing %s.%s: %s%n", classname, m.getName(), t);
+          System.err.printf("Error processing %s.%s: %s%n", classname, m.getName(), t);
           System.err.printf("Method is NOT instrumented.%n");
         }
       }
@@ -1372,14 +1372,14 @@ public class DCInstrument extends InstructionListUtils {
     // unsigned byte max = 255.  minus the character '0' (decimal 48)
     // Largest frame size noted so far is 123.
     assert frame_size < 207 : frame_size + " " + mg.getClassName() + "." + mg.getName();
-    String params = "" + (char) (frame_size + '0');
+    String params = Character.toString((char) (frame_size + '0'));
     // Character.forDigit (frame_size, Character.MAX_RADIX);
     List<Integer> paramList = new ArrayList<>();
-    for (Type argType : arg_types) {
-      if (argType instanceof BasicType) {
+    for (Type paramType : arg_types) {
+      if (paramType instanceof BasicType) {
         paramList.add(offset);
       }
-      offset += argType.getSize();
+      offset += paramType.getSize();
     }
     for (int ii = paramList.size() - 1; ii >= 0; ii--) {
       char tmpChar = (char) (paramList.get(ii) + '0');
@@ -1923,11 +1923,11 @@ public class DCInstrument extends InstructionListUtils {
    *
    * @param startClass the JavaClass whose interfaces are to be searched
    * @param methodName the target method to search for
-   * @param argTypes the target method's argument types
+   * @param paramTypes the target method's argument types
    * @return the name of the interface class containing target method, or null if not found
    */
   private @Nullable @ClassGetName String getDefiningInterface(
-      JavaClass startClass, String methodName, Type[] argTypes) {
+      JavaClass startClass, String methodName, Type[] paramTypes) {
 
     if (debugGetDefiningInterface) {
       System.out.println("searching interfaces of: " + startClass.getClassName());
@@ -1946,13 +1946,13 @@ public class DCInstrument extends InstructionListUtils {
         if (debugGetDefiningInterface) {
           System.out.println("  " + jm.getName() + Arrays.toString(jm.getArgumentTypes()));
         }
-        if (jm.getName().equals(methodName) && Arrays.equals(jm.getArgumentTypes(), argTypes)) {
+        if (jm.getName().equals(methodName) && Arrays.equals(jm.getArgumentTypes(), paramTypes)) {
           // We have a match.
           return interfaceName;
         }
       }
       // no match found; does this interface extend other interfaces?
-      @ClassGetName String foundAbove = getDefiningInterface(ji, methodName, argTypes);
+      @ClassGetName String foundAbove = getDefiningInterface(ji, methodName, paramTypes);
       if (foundAbove != null) {
         // We have a match.
         return foundAbove;
@@ -1993,9 +1993,9 @@ public class DCInstrument extends InstructionListUtils {
     // getClassName does not work properly if invoke is INVOKEDYNAMIC.
     // We will deal with this later.
     Type returnType = invoke.getReturnType(pool);
-    Type[] argTypes = invoke.getArgumentTypes(pool);
+    Type[] paramTypes = invoke.getArgumentTypes(pool);
 
-    if (is_object_equals(methodName, returnType, argTypes)) {
+    if (is_object_equals(methodName, returnType, paramTypes)) {
 
       // Replace calls to Object's equals method with calls to our
       // replacement, a static method in DCRuntime.
@@ -2013,7 +2013,7 @@ public class DCInstrument extends InstructionListUtils {
       return il;
     }
 
-    if (is_object_clone(methodName, returnType, argTypes)) {
+    if (is_object_clone(methodName, returnType, paramTypes)) {
 
       // Replace calls to Object's clone method with calls to our
       // replacement, a static method in DCRuntime.
@@ -2022,7 +2022,7 @@ public class DCInstrument extends InstructionListUtils {
       return il;
     }
 
-    boolean callee_instrumented = isTargetInstrumented(invoke, classname, methodName, argTypes);
+    boolean callee_instrumented = isTargetInstrumented(invoke, classname, methodName, paramTypes);
 
     if (debugHandleInvoke) {
       System.out.printf("handleInvoke(%s)%n", invoke);
@@ -2036,7 +2036,7 @@ public class DCInstrument extends InstructionListUtils {
       InstructionList il = new InstructionList();
       // Add the DCompMarker argument so that it calls the instrumented version.
       il.append(new ACONST_NULL());
-      Type[] new_arg_types = ArraysPlume.append(argTypes, dcomp_marker);
+      Type[] new_arg_types = ArraysPlume.append(paramTypes, dcomp_marker);
       Constant methodref = pool.getConstant(invoke.getIndex());
       il.append(
           ifact.createInvoke(
@@ -2056,7 +2056,7 @@ public class DCInstrument extends InstructionListUtils {
       // they actually contain instrumentation code.  So we do not want to discard
       // the primitive tags prior to the call.
       if (!junitTestClasses.contains(classname)) {
-        il.append(discard_primitive_tags(argTypes));
+        il.append(discard_primitive_tags(paramTypes));
       }
 
       // Add a tag for the return type if it is primitive.
@@ -2075,14 +2075,14 @@ public class DCInstrument extends InstructionListUtils {
    * Returns instructions that will discard any primitive tags corresponding to the specified
    * arguments. Returns an empty instruction list if there are no primitive arguments to discard.
    *
-   * @param argTypes argument types of target method
+   * @param paramTypes argument types of target method
    * @return an instruction list that discards primitive tags from DCRuntime's per-thread
    *     comparability data stack
    */
-  private InstructionList discard_primitive_tags(Type[] argTypes) {
+  private InstructionList discard_primitive_tags(Type[] paramTypes) {
     int primitive_cnt = 0;
-    for (Type argType : argTypes) {
-      if (argType instanceof BasicType) {
+    for (Type paramType : paramTypes) {
+      if (paramType instanceof BasicType) {
         primitive_cnt++;
       }
     }
@@ -2099,14 +2099,14 @@ public class DCInstrument extends InstructionListUtils {
    * @param invoke instruction whose target is to be checked
    * @param classname target class of the invoke
    * @param methodName target method of the invoke
-   * @param argTypes argument types of target method
+   * @param paramTypes argument types of target method
    * @return true if the target is instrumented
    */
   private boolean isTargetInstrumented(
       InvokeInstruction invoke,
       @ClassGetName String classname,
       String methodName,
-      Type[] argTypes) {
+      Type[] paramTypes) {
     boolean targetInstrumented;
 
     if (invoke instanceof INVOKEDYNAMIC) {
@@ -2197,7 +2197,7 @@ public class DCInstrument extends InstructionListUtils {
 
           if (debugHandleInvoke) {
             System.out.println("method: " + methodName);
-            System.out.println("argTypes: " + Arrays.toString(argTypes));
+            System.out.println("paramTypes: " + Arrays.toString(paramTypes));
             System.out.printf("invoke host: %s%n", gen.getClassName() + "." + mgen.getName());
           }
 
@@ -2229,7 +2229,8 @@ public class DCInstrument extends InstructionListUtils {
               if (debugHandleInvoke) {
                 System.out.println("  " + m.getName() + Arrays.toString(m.getArgumentTypes()));
               }
-              if (m.getName().equals(methodName) && Arrays.equals(m.getArgumentTypes(), argTypes)) {
+              if (m.getName().equals(methodName)
+                  && Arrays.equals(m.getArgumentTypes(), paramTypes)) {
                 // We have a match.
                 if (debugHandleInvoke) {
                   System.out.printf("we have a match%n%n");
@@ -2245,7 +2246,7 @@ public class DCInstrument extends InstructionListUtils {
               // no methods match - search this class's interfaces
               @ClassGetName String found;
               try {
-                found = getDefiningInterface(targetClass, methodName, argTypes);
+                found = getDefiningInterface(targetClass, methodName, paramTypes);
               } catch (Throwable e) {
                 // We cannot locate or read the .class file, better assume it is not instrumented.
                 targetInstrumented = false;
@@ -2455,7 +2456,7 @@ public class DCInstrument extends InstructionListUtils {
           return result;
         }
       } catch (Throwable t) {
-        throw new Error("Unexpected error reading " + class_url, t);
+        throw new Error("Error reading " + class_url, t);
       }
     }
     // Do not cache a null result, because a subsequent invocation might return non-null.
@@ -2770,25 +2771,25 @@ public class DCInstrument extends InstructionListUtils {
     //   // This case DOES occur at run time.  -MDE 1/22/2010
     // }
 
-    // Get the argument names for this method
-    String[] argNames = mg.getArgumentNames();
+    // Get the paramter names for this method
+    String[] paramNames = mg.getArgumentNames();
     LocalVariableGen[] lvs = mg.getLocalVariables();
     int param_offset = 1;
     if (mg.isStatic()) {
       param_offset = 0;
     }
-    for (int ii = 0; ii < argNames.length; ii++) {
+    for (int ii = 0; ii < paramNames.length; ii++) {
       if ((ii + param_offset) < lvs.length) {
-        argNames[ii] = lvs[ii + param_offset].getName();
+        paramNames[ii] = lvs[ii + param_offset].getName();
       }
     }
 
     // Get the argument types for this method
-    Type[] argTypes = mg.getArgumentTypes();
-    @ClassGetName String[] arg_type_strings = new @ClassGetName String[argTypes.length];
-    for (int ii = 0; ii < argTypes.length; ii++) {
-      arg_type_strings[ii] = typeToClassGetName(argTypes[ii]);
-      // System.out.printf("DCI arg types: %s %s%n", argTypes[ii], arg_type_strings[ii]);
+    Type[] paramTypes = mg.getArgumentTypes();
+    @ClassGetName String[] param_type_strings = new @ClassGetName String[paramTypes.length];
+    for (int ii = 0; ii < paramTypes.length; ii++) {
+      param_type_strings[ii] = typeToClassGetName(paramTypes[ii]);
+      // System.out.printf("DCI arg types: %s %s%n", paramTypes[ii], param_type_strings[ii]);
     }
 
     // Loop through each instruction and find the line number for each
@@ -2849,7 +2850,7 @@ public class DCInstrument extends InstructionListUtils {
     }
 
     return new MethodInfo(
-        class_info, mg.getName(), argNames, arg_type_strings, exit_line_numbers, isIncluded);
+        class_info, mg.getName(), paramNames, param_type_strings, exit_line_numbers, isIncluded);
   }
 
   /**
@@ -2910,8 +2911,7 @@ public class DCInstrument extends InstructionListUtils {
       if (debugInstrument.enabled) {
         t.printStackTrace();
       }
-      throw new Error(
-          "Unexpected error processing " + gen.getClassName() + "." + cinit.getName(), t);
+      throw new Error("Error processing " + gen.getClassName() + "." + cinit.getName(), t);
     }
   }
 
@@ -3089,10 +3089,10 @@ public class DCInstrument extends InstructionListUtils {
     //                   fullClassName, m, m.getName());
 
     // Get an array of the type names
-    Type[] argTypes = m.getArgumentTypes();
-    String[] type_names = new String[argTypes.length];
-    for (int ii = 0; ii < argTypes.length; ii++) {
-      type_names[ii] = argTypes[ii].toString();
+    Type[] paramTypes = m.getArgumentTypes();
+    String[] type_names = new String[paramTypes.length];
+    for (int ii = 0; ii < paramTypes.length; ii++) {
+      type_names[ii] = paramTypes[ii].toString();
     }
 
     // Remove exceptions from the name
@@ -3109,13 +3109,13 @@ public class DCInstrument extends InstructionListUtils {
    *
    * @param methodName method to call
    * @param returnType type of method return
-   * @param argTypes array of method argument types
+   * @param paramTypes array of method argument types
    * @return InvokeInstruction for the call
    */
-  InvokeInstruction dcr_call(String methodName, Type returnType, Type[] argTypes) {
+  InvokeInstruction dcr_call(String methodName, Type returnType, Type[] paramTypes) {
 
     return ifact.createInvoke(
-        dcompRuntimeClassName, methodName, returnType, argTypes, Const.INVOKESTATIC);
+        dcompRuntimeClassName, methodName, returnType, paramTypes, Const.INVOKESTATIC);
   }
 
   /**
@@ -3495,8 +3495,8 @@ public class DCInstrument extends InstructionListUtils {
   void fix_native(ClassGen gen, MethodGen mg) {
 
     InstructionList il = new InstructionList();
-    Type[] argTypes = mg.getArgumentTypes();
-    String[] argNames = mg.getArgumentNames();
+    Type[] paramTypes = mg.getArgumentTypes();
+    String[] paramNames = mg.getArgumentNames();
 
     debug_native.log("Native call %s%n", mg);
 
@@ -3504,15 +3504,15 @@ public class DCInstrument extends InstructionListUtils {
     if (!mg.isStatic()) {
       mg.addLocalVariable("this", new ObjectType(mg.getClassName()), null, null);
     }
-    for (int ii = 0; ii < argTypes.length; ii++) {
-      mg.addLocalVariable(argNames[ii], argTypes[ii], null, null);
+    for (int ii = 0; ii < paramTypes.length; ii++) {
+      mg.addLocalVariable(paramNames[ii], paramTypes[ii], null, null);
     }
 
     // Discard the tags for any primitive arguments passed to system
     // methods
     int primitive_cnt = 0;
-    for (Type argType : argTypes) {
-      if (argType instanceof BasicType) {
+    for (Type paramType : paramTypes) {
+      if (paramType instanceof BasicType) {
         primitive_cnt++;
       }
     }
@@ -3531,12 +3531,12 @@ public class DCInstrument extends InstructionListUtils {
       il.append(InstructionFactory.createLoad(new ObjectType(gen.getClassName()), 0));
     }
 
-    // System.out.printf("%s: atc = %d, anc = %d%n", mg.getName(), argTypes.length,
-    // argNames.length);
+    // System.out.printf("%s: atc = %d, anc = %d%n", mg.getName(), paramTypes.length,
+    // paramNames.length);
 
     // if call is sun.reflect.Reflection.getCallerClass (realFramesToSkip)
     if (mg.getName().equals("getCallerClass")
-        && (argTypes.length == 1)
+        && (paramTypes.length == 1)
         && gen.getClassName().equals("sun.reflect.Reflection")) {
 
       // The call returns the class realFramesToSkip up on the stack. Since we
@@ -3554,9 +3554,9 @@ public class DCInstrument extends InstructionListUtils {
       if (mg.isStatic()) {
         param_index = 0;
       }
-      for (Type argType : argTypes) {
-        il.append(InstructionFactory.createLoad(argType, param_index));
-        param_index += argType.getSize();
+      for (Type paramType : paramTypes) {
+        il.append(InstructionFactory.createLoad(paramType, param_index));
+        param_index += paramType.getSize();
       }
     }
 
@@ -3566,7 +3566,7 @@ public class DCInstrument extends InstructionListUtils {
             gen.getClassName(),
             mg.getName(),
             mg.getReturnType(),
-            argTypes,
+            paramTypes,
             (mg.isStatic() ? Const.INVOKESTATIC : Const.INVOKEVIRTUAL)));
 
     // If there is a return value, return it
@@ -4091,13 +4091,13 @@ public class DCInstrument extends InstructionListUtils {
    * Returns true if the method is defined in Object.
    *
    * @param methodName method to check
-   * @param argTypes array of argument types to method
+   * @param paramTypes array of argument types to method
    * @return true if method is member of Object
    */
   @Pure
-  boolean is_object_method(String methodName, Type[] argTypes) {
+  boolean is_object_method(String methodName, Type[] paramTypes) {
     for (MethodDef md : obj_methods) {
-      if (md.equals(methodName, argTypes)) {
+      if (md.equals(methodName, paramTypes)) {
         return true;
       }
     }
@@ -4143,9 +4143,9 @@ public class DCInstrument extends InstructionListUtils {
     }
 
     // push each argument on the stack
-    for (Type argType : mg.getArgumentTypes()) {
-      il.append(InstructionFactory.createLoad(argType, offset));
-      offset += argType.getSize();
+    for (Type paramType : mg.getArgumentTypes()) {
+      il.append(InstructionFactory.createLoad(paramType, offset));
+      offset += paramType.getSize();
     }
 
     // Call the method
@@ -4160,14 +4160,14 @@ public class DCInstrument extends InstructionListUtils {
     il.append(InstructionFactory.createReturn(returnType));
 
     // Create the method
-    Type[] argTypes = ArraysPlume.append(mg.getArgumentTypes(), dcomp_marker);
-    String[] argNames = ArraysPlume.append(mg.getArgumentNames(), "marker");
+    Type[] paramTypes = ArraysPlume.append(mg.getArgumentTypes(), dcomp_marker);
+    String[] paramNames = ArraysPlume.append(mg.getArgumentNames(), "marker");
     MethodGen dcomp_mg =
         new MethodGen(
             mg.getAccessFlags(),
             returnType,
-            argTypes,
-            argNames,
+            paramTypes,
+            paramNames,
             mg.getName(),
             mg.getClassName(),
             il,

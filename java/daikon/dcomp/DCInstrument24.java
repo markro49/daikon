@@ -1807,7 +1807,7 @@ public class DCInstrument24 {
     if (frame_size > 206) {
       throw new DynCompError("method too large to instrument: " + mgen.getName());
     }
-    String params = "" + (char) (frame_size + '0');
+    String params = Character.toString((char) (frame_size + '0'));
     // Character.forDigit (frame_size, Character.MAX_RADIX);
     List<Integer> paramList = new ArrayList<>();
     for (ClassDesc paramType : paramTypes) {
@@ -3033,15 +3033,15 @@ public class DCInstrument24 {
    *
    * @param methodName method to check
    * @param returnType return type of method
-   * @param args array of parameter types to method
+   * @param paramTypes array of parameter types to method
    * @return true if method is Object.equals()
    */
   @Pure
-  boolean is_object_equals(String methodName, ClassDesc returnType, ClassDesc[] args) {
+  boolean is_object_equals(String methodName, ClassDesc returnType, ClassDesc[] paramTypes) {
     return (methodName.equals("equals")
         && returnType.equals(CD_boolean)
-        && args.length == 1
-        && args[0].equals(CD_Object));
+        && paramTypes.length == 1
+        && paramTypes[0].equals(CD_Object));
   }
 
   /**
@@ -3049,12 +3049,12 @@ public class DCInstrument24 {
    *
    * @param methodName method to check
    * @param returnType return type of method
-   * @param args array of parameter types to method
+   * @param paramTypes array of parameter types to method
    * @return true if method is Object.clone()
    */
   @Pure
-  boolean is_object_clone(String methodName, ClassDesc returnType, ClassDesc[] args) {
-    return methodName.equals("clone") && returnType.equals(CD_Object) && (args.length == 0);
+  boolean is_object_clone(String methodName, ClassDesc returnType, ClassDesc[] paramTypes) {
+    return methodName.equals("clone") && returnType.equals(CD_Object) && (paramTypes.length == 0);
   }
 
   /**
@@ -3357,9 +3357,9 @@ public class DCInstrument24 {
 
     // Get the parameter types for this method.
     ClassDesc[] paramTypes = mgen.getParameterTypes();
-    @ClassGetName String[] arg_type_strings = new @ClassGetName String[paramTypes.length];
+    @ClassGetName String[] param_type_strings = new @ClassGetName String[paramTypes.length];
     for (int i = 0; i < paramTypes.length; i++) {
-      arg_type_strings[i] = Instrument24.classDescToClassGetName(paramTypes[i]);
+      param_type_strings[i] = Instrument24.classDescToClassGetName(paramTypes[i]);
     }
 
     // Loop through each instruction and find the line number for each return opcode.
@@ -3401,7 +3401,7 @@ public class DCInstrument24 {
     }
 
     return new MethodInfo(
-        classInfo, mgen.getName(), paramNames, arg_type_strings, exit_line_numbers, isIncluded);
+        classInfo, mgen.getName(), paramNames, param_type_strings, exit_line_numbers, isIncluded);
   }
 
   /**
