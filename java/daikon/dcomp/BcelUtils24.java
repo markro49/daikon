@@ -2,6 +2,7 @@ package daikon.dcomp;
 
 import daikon.chicory.MethodGen24;
 import daikon.plumelib.bcelutil.SimpleLog;
+import daikon.plumelib.util.ArraysPlume;
 import java.lang.classfile.CodeElement;
 import java.lang.classfile.TypeKind;
 import java.lang.classfile.instruction.DiscontinuedInstruction;
@@ -10,7 +11,6 @@ import java.lang.classfile.instruction.LoadInstruction;
 import java.lang.classfile.instruction.LocalVariable;
 import java.lang.classfile.instruction.StoreInstruction;
 import java.lang.constant.ClassDesc;
-import java.util.Arrays;
 import java.util.List;
 import java.util.ListIterator;
 import org.checkerframework.checker.signature.qual.Identifier;
@@ -42,38 +42,6 @@ public final class BcelUtils24 {
 
   /** A log to which to print debugging information about program instrumentation. */
   private static SimpleLog debugInstrument = new SimpleLog(false);
-
-  /**
-   * Returns a copy of the given type array, with newType added to the end.
-   *
-   * @param types the array to extend
-   * @param newType the element to add to the end of the array
-   * @return a new array, with newType at the end
-   */
-  public static ClassDesc[] postpendToArray(ClassDesc[] types, ClassDesc newType) {
-    if (types.length == Integer.MAX_VALUE) {
-      throw new IllegalArgumentException(
-          "array " + Arrays.toString(types) + " is too large to extend");
-    }
-    ClassDesc[] newTypes = new ClassDesc[types.length + 1];
-    System.arraycopy(types, 0, newTypes, 0, types.length);
-    newTypes[types.length] = newType;
-    return newTypes;
-  }
-
-  /**
-   * Returns a String array with newString added to the end of arr.
-   *
-   * @param arr original string array
-   * @param newString string to be added
-   * @return the new string array
-   */
-  static String[] addString(String[] arr, String newString) {
-    String[] newArr = new String[arr.length + 1];
-    System.arraycopy(arr, 0, newArr, 0, arr.length);
-    newArr[arr.length] = newString;
-    return newArr;
-  }
 
   /**
    * Add {@code size} (1 or 2) to the slot number of each Instruction that references a local that
@@ -192,8 +160,9 @@ public final class BcelUtils24 {
 
     if (isParam) {
       // Update the method's parameter information.
-      paramTypes = postpendToArray(paramTypes, varType);
-      @Identifier String[] paramNames = addString(mgen.getParameterNames(), varName);
+      paramTypes = ArraysPlume.append(paramTypes, varType);
+      @Identifier String[] paramNames =
+          ArraysPlume.<@Identifier String>append(mgen.getParameterNames(), varName);
       mgen.setParameterTypes(paramTypes);
       mgen.setParameterNames(paramNames);
     }
