@@ -167,8 +167,14 @@ public class DCInstrument extends InstructionListUtils {
   protected static Type object_arr = new ArrayType(Type.OBJECT, 1);
 
   // private Type int_arr = new ArrayType (Type.INT, 1);
+
+  /** ObjectType for "java.lang.Throwable". */
   protected static ObjectType throwable = new ObjectType("java.lang.Throwable");
+
+  /** ObjectType for DCompMarker . */
   protected ObjectType dcomp_marker;
+
+  /** ObjectType for "java.lang.Object". */
   protected static ObjectType javalangObject = new ObjectType("java.lang.Object");
 
   // Debug loggers
