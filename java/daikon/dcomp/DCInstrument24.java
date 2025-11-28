@@ -113,6 +113,7 @@ import org.checkerframework.checker.signature.qual.BinaryName;
 import org.checkerframework.checker.signature.qual.ClassGetName;
 import org.checkerframework.checker.signature.qual.DotSeparatedIdentifiers;
 import org.checkerframework.checker.signature.qual.FieldDescriptor;
+import org.checkerframework.checker.signature.qual.Identifier;
 import org.checkerframework.checker.signature.qual.MethodDescriptor;
 import org.checkerframework.dataflow.qual.Pure;
 
