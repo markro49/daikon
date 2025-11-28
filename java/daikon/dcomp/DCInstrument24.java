@@ -783,9 +783,7 @@ public class DCInstrument24 {
       throw e;
     } catch (Throwable t) {
       throw new DynCompError(
-          String.format(
-              "Unexpected error processing %s.%s.%n", mgen.getClassName(), mgen.getName()),
-          t);
+          String.format("Error processing %s.%s.%n", mgen.getClassName(), mgen.getName()), t);
     }
   }
 
@@ -995,9 +993,9 @@ public class DCInstrument24 {
           if (t instanceof DynCompError) {
             throw t;
           }
-          throw new DynCompError("Unexpected error processing " + method, t);
+          throw new DynCompError("Error processing " + method, t);
         } else {
-          System.err.printf("Unexpected error processing %s: %s%n", method, t);
+          System.err.printf("Error processing %s: %s%n", method, t);
           System.err.printf("Method is NOT instrumented.%n");
         }
       }
@@ -1135,8 +1133,7 @@ public class DCInstrument24 {
     } catch (DynCompError e) {
       throw e;
     } catch (Throwable t) {
-      throw new DynCompError(
-          "Unexpected error processing " + classInfo.class_name + "." + mgen.getName(), t);
+      throw new DynCompError("Error processing " + classInfo.class_name + "." + mgen.getName(), t);
     }
   }
 
@@ -1639,9 +1636,7 @@ public class DCInstrument24 {
       throw e;
     } catch (Throwable t) {
       throw new DynCompError(
-          String.format(
-              "Unexpected error processing %s.%s.%n", mgen.getClassName(), mgen.getName()),
-          t);
+          String.format("Error processing %s.%s.%n", mgen.getClassName(), mgen.getName()), t);
     }
   }
 
@@ -1780,7 +1775,7 @@ public class DCInstrument24 {
    * @return LocalVariable for the tag_frame local
    */
   LocalVariable createTagFrameLocal(MethodGen24 mgen, MethodGen24.MInfo24 minfo) {
-    return BcelUtils24.addNewSpecialLocal(mgen, "dcomp_tag_frame$5a", objectArrayCD, minfo, false);
+    return BcelUtils24.addNewSpecialLocal(mgen, minfo, "dcomp_tag_frame$5a", objectArrayCD, false);
   }
 
   /**
@@ -3023,7 +3018,7 @@ public class DCInstrument24 {
         }
       } catch (Throwable t) {
         throw new DynCompError(
-            String.format("Unexpected error while reading %s %s%n", classname, class_url), t);
+            String.format("Error while reading %s %s%n", classname, class_url), t);
       }
     }
     // Do not cache a null result, because a subsequent invocation might return non-null.
@@ -4626,7 +4621,7 @@ public class DCInstrument24 {
 
     // Add the dcomp marker argument to indicate this is the
     // instrumented version of the method.
-    BcelUtils24.addNewSpecialLocal(mgen, "marker", dcomp_marker, minfo, true);
+    BcelUtils24.addNewSpecialLocal(mgen, minfo, "marker", dcomp_marker, true);
   }
 
   /**
