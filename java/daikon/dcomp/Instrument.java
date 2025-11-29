@@ -26,6 +26,10 @@ import org.checkerframework.dataflow.qual.Pure;
  */
 public class Instrument implements ClassFileTransformer {
 
+  //
+  // Start of diagnostics.
+  //
+
   /** Directory for debug output. */
   final File debug_dir;
 
@@ -34,9 +38,6 @@ public class Instrument implements ClassFileTransformer {
 
   /** Directory into which to dump original classes. */
   final File debug_uninstrumented_dir;
-
-  /** Have we seen a class member of a known transformer? */
-  private static boolean transformer_seen = false;
 
   /**
    * Debug information about which classes and/or methods are transformed and why. Use
@@ -88,13 +89,20 @@ public class Instrument implements ClassFileTransformer {
       // Write a BCEL-like file.
       BcelUtil.dump(c, directory);
     } catch (Throwable t) {
-      System.err.printf("Unexpected error %s writing debug files for: %s%n", t, className);
+      System.err.printf("Error %s writing debug files for: %s%n", t, className);
       if (debug_transform.enabled) {
         t.printStackTrace();
       }
       // Ignore the error, it shouldn't affect the instrumentation.
     }
   }
+
+  //
+  // End of diagnostics.
+  //
+
+  /** Have we seen a class member of a known transformer? */
+  private static boolean transformer_seen = false;
 
   /**
    * Given a class, return a transformed version of the class that contains instrumentation code.
@@ -118,7 +126,7 @@ public class Instrument implements ClassFileTransformer {
     debug_transform.log("%nEntering dcomp.Instrument.transform(): class = %s%n", className);
 
     if (className == null) {
-      // most likely a lambda related class
+      // most likely a lambda-related class
       return null;
     }
 
@@ -130,8 +138,8 @@ public class Instrument implements ClassFileTransformer {
       return null;
     }
 
-    // If already instrumented, nothing to do
-    // (This set will be empty if Premain.jdk_instrumented is false)
+    // If already instrumented, there is nothing to do.
+    // (This set will be empty if Premain.jdk_instrumented is false.)
     if (Premain.pre_instrumented.contains(className)) {
       debug_transform.log("Skipping pre_instrumented JDK class %s%n", binaryClassName);
       return null;
@@ -180,8 +188,8 @@ public class Instrument implements ClassFileTransformer {
       debug_transform.log("Instrumenting JDK class %s%n", binaryClassName);
     } else {
 
-      // We're not in a JDK class
-      // Don't instrument our own classes
+      // We're not in a JDK class.
+      // Don't instrument our own classes.
       if (is_dcomp(className)) {
         debug_transform.log("Skipping is_dcomp class %s%n", binaryClassName);
         return null;
@@ -218,7 +226,7 @@ public class Instrument implements ClassFileTransformer {
       ClassParser parser = new ClassParser(bais, className);
       c = parser.parse();
     } catch (Throwable t) {
-      System.err.printf("Unexpected error %s while parsing bytes of %s%n", t, binaryClassName);
+      System.err.printf("Error %s while parsing bytes of %s%n", t, binaryClassName);
       if (debug_transform.enabled) {
         t.printStackTrace();
       }
@@ -236,7 +244,7 @@ public class Instrument implements ClassFileTransformer {
       DCInstrument dci = new DCInstrument(c, in_jdk, loader);
       njc = dci.instrument();
     } catch (Throwable t) {
-      System.err.printf("Unexpected error %s in transform of %s%n", t, binaryClassName);
+      System.err.printf("Error %s in transform of %s%n", t, binaryClassName);
       if (debug_transform.enabled) {
         t.printStackTrace();
       }
