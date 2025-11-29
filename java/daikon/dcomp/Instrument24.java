@@ -23,12 +23,12 @@ import org.checkerframework.checker.signature.qual.InternalForm;
 import org.checkerframework.dataflow.qual.Pure;
 
 /**
- * This class is responsible for modifying another class's bytecodes. Specifically, its main task is
- * to add calls into the DynComp Runtime for instrumentation purposes. These added calls are
- * sometimes referred to as "hooks".
+ * This class is responsible for modifying bytecodes. Specifically, its main task is to add calls
+ * into the DynComp Runtime for instrumentation purposes. These added calls are sometimes referred
+ * to as "hooks".
  *
- * <p>This class is loaded by Premain at startup. It is a ClassFileTransformer which means that its
- * {@code transform} method gets called each time the JVM loads a class.
+ * <p>This class is loaded by Premain at startup. It is a {@link ClassFileTransformer} which means
+ * that its {@link #transform} method gets called each time the JVM loads a class.
  *
  * <p>Instrument24 and DCInstrument24 use Java's ({@code java.lang.classfile}) APIs for reading and
  * modifying .class files. Those APIs were added in JDK 24. Compared to BCEL, these APIs are more
@@ -39,6 +39,10 @@ import org.checkerframework.dataflow.qual.Pure;
  */
 public class Instrument24 implements ClassFileTransformer {
 
+  //
+  // Start of diagnostics.
+  //
+
   /** Directory for debug output. */
   final File debug_dir;
 
@@ -47,9 +51,6 @@ public class Instrument24 implements ClassFileTransformer {
 
   /** Directory into which to dump original classes. */
   final File debug_uninstrumented_dir;
-
-  /** Have we seen a class member of a known transformer? */
-  private static boolean transformer_seen = false;
 
   /**
    * Debug information about which classes and/or methods are transformed and why. Use
@@ -101,7 +102,7 @@ public class Instrument24 implements ClassFileTransformer {
       ClassParser parser = new ClassParser(bais, className);
       c = parser.parse();
     } catch (Throwable t) {
-      System.err.printf("Unexpected error %s while parsing the bytes of %s%n", t, className);
+      System.err.printf("Error %s while parsing the bytes of %s%n", t, className);
       if (debug_transform.enabled) {
         t.printStackTrace();
       }
@@ -118,13 +119,20 @@ public class Instrument24 implements ClassFileTransformer {
         BcelUtil.dump(c, directory);
       }
     } catch (Throwable t) {
-      System.err.printf("Unexpected error %s writing debug files for: %s%n", t, className);
+      System.err.printf("Error %s writing debug files for: %s%n", t, className);
       if (debug_transform.enabled) {
         t.printStackTrace();
       }
       // Ignore the error, it shouldn't affect the instrumentation.
     }
   }
+
+  //
+  // End of diagnostics.
+  //
+
+  /** Have we seen a class member of a known transformer? */
+  private static boolean transformer_seen = false;
 
   /**
    * Given a class, return a transformed version of the class that contains instrumentation code.
@@ -148,7 +156,7 @@ public class Instrument24 implements ClassFileTransformer {
     debug_transform.log("%nEntering dcomp.Instrument24.transform(): class = %s%n", className);
 
     if (className == null) {
-      // most likely a lambda related class
+      // most likely a lambda-related class
       return null;
     }
 
@@ -160,8 +168,8 @@ public class Instrument24 implements ClassFileTransformer {
       return null;
     }
 
-    // If already instrumented, nothing to do
-    // (This set will be empty if Premain.jdk_instrumented is false)
+    // If already instrumented, there is nothing to do.
+    // (This set will be empty if Premain.jdk_instrumented is false.)
     if (Premain.pre_instrumented.contains(className)) {
       debug_transform.log("Skipping pre_instrumented JDK class %s%n", binaryClassName);
       return null;
@@ -210,8 +218,8 @@ public class Instrument24 implements ClassFileTransformer {
       debug_transform.log("Instrumenting JDK class %s%n", binaryClassName);
     } else {
 
-      // We're not in a JDK class
-      // Don't instrument our own classes
+      // We're not in a JDK class.
+      // Don't instrument our own classes.
       if (is_dcomp(className)) {
         debug_transform.log("Skipping is_dcomp class %s%n", binaryClassName);
         return null;
@@ -252,7 +260,7 @@ public class Instrument24 implements ClassFileTransformer {
     try {
       classModel = classFile.parse(classfileBuffer);
     } catch (Throwable t) {
-      System.err.printf("Unexpected error %s while parsing bytes of %s%n", t, binaryClassName);
+      System.err.printf("Error %s while parsing bytes of %s%n", t, binaryClassName);
       if (debug_transform.enabled) {
         t.printStackTrace();
       }
@@ -274,7 +282,7 @@ public class Instrument24 implements ClassFileTransformer {
     try {
       newBytes = dci.instrument(classInfo);
     } catch (Throwable t) {
-      System.err.printf("Unexpected error %s in transform of %s%n", t, binaryClassName);
+      System.err.printf("Error %s in transform of %s%n", t, binaryClassName);
       if (debug_transform.enabled) {
         t.printStackTrace();
       }

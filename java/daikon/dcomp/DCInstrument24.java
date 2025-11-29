@@ -113,6 +113,7 @@ import org.checkerframework.checker.signature.qual.BinaryName;
 import org.checkerframework.checker.signature.qual.ClassGetName;
 import org.checkerframework.checker.signature.qual.DotSeparatedIdentifiers;
 import org.checkerframework.checker.signature.qual.FieldDescriptor;
+import org.checkerframework.checker.signature.qual.Identifier;
 import org.checkerframework.checker.signature.qual.MethodDescriptor;
 import org.checkerframework.dataflow.qual.Pure;
 
@@ -782,9 +783,7 @@ public class DCInstrument24 {
       throw e;
     } catch (Throwable t) {
       throw new DynCompError(
-          String.format(
-              "Unexpected error processing %s.%s.%n", mgen.getClassName(), mgen.getName()),
-          t);
+          String.format("Error processing %s.%s.%n", mgen.getClassName(), mgen.getName()), t);
     }
   }
 
@@ -993,9 +992,9 @@ public class DCInstrument24 {
           if (t instanceof DynCompError) {
             throw t;
           }
-          throw new DynCompError("Unexpected error processing " + method, t);
+          throw new DynCompError("Error processing " + method, t);
         } else {
-          System.err.printf("Unexpected error processing %s: %s%n", method, t);
+          System.err.printf("Error processing %s: %s%n", method, t);
           System.err.printf("Method is NOT instrumented.%n");
         }
       }
@@ -1133,8 +1132,7 @@ public class DCInstrument24 {
     } catch (DynCompError e) {
       throw e;
     } catch (Throwable t) {
-      throw new DynCompError(
-          "Unexpected error processing " + classInfo.class_name + "." + mgen.getName(), t);
+      throw new DynCompError("Error processing " + classInfo.class_name + "." + mgen.getName(), t);
     }
   }
 
@@ -1633,9 +1631,7 @@ public class DCInstrument24 {
       throw e;
     } catch (Throwable t) {
       throw new DynCompError(
-          String.format(
-              "Unexpected error processing %s.%s.%n", mgen.getClassName(), mgen.getName()),
-          t);
+          String.format("Error processing %s.%s.%n", mgen.getClassName(), mgen.getName()), t);
     }
   }
 
@@ -1774,7 +1770,7 @@ public class DCInstrument24 {
    * @return LocalVariable for the tag_frame local
    */
   LocalVariable createTagFrameLocal(MethodGen24 mgen, MethodGen24.MInfo24 minfo) {
-    return BcelUtils24.addNewSpecialLocal(mgen, "dcomp_tag_frame$5a", objectArrayCD, minfo, false);
+    return BcelUtils24.addNewSpecialLocal(mgen, minfo, "dcomp_tag_frame$5a", objectArrayCD, false);
   }
 
   /**
@@ -1802,7 +1798,7 @@ public class DCInstrument24 {
     if (frame_size > 206) {
       throw new DynCompError("method too large to instrument: " + mgen.getName());
     }
-    String params = "" + (char) (frame_size + '0');
+    String params = Character.toString((char) (frame_size + '0'));
     // Character.forDigit (frame_size, Character.MAX_RADIX);
     List<Integer> plist = new ArrayList<>();
     for (ClassDesc paramType : paramTypes) {
@@ -3017,7 +3013,7 @@ public class DCInstrument24 {
           return result;
         }
       } catch (Throwable t) {
-        throw new DynCompError(String.format("Unexpected error while reading %s%n", classname), t);
+        throw new DynCompError(String.format("Error while reading %s%n", classname), t);
       }
     }
     // Do not cache a null result, because a subsequent invocation might return non-null.
@@ -3029,15 +3025,16 @@ public class DCInstrument24 {
    *
    * @param methodName method to check
    * @param returnType return type of method
-   * @param args array of parameter types to method
+   * @param paramTypes array of parameter types to method
    * @return true if method is Object.equals()
    */
   @Pure
-  boolean is_object_equals(@Identifier String methodName, ClassDesc returnType, ClassDesc[] args) {
+  boolean is_object_equals(
+      @Identifier String methodName, ClassDesc returnType, ClassDesc[] paramTypes) {
     return (methodName.equals("equals")
         && returnType.equals(CD_boolean)
-        && args.length == 1
-        && args[0].equals(CD_Object));
+        && paramTypes.length == 1
+        && paramTypes[0].equals(CD_Object));
   }
 
   /**
@@ -3045,12 +3042,13 @@ public class DCInstrument24 {
    *
    * @param methodName method to check
    * @param returnType return type of method
-   * @param args array of parameter types to method
+   * @param paramTypes array of parameter types to method
    * @return true if method is Object.clone()
    */
   @Pure
-  boolean is_object_clone(@Identifier String methodName, ClassDesc returnType, ClassDesc[] args) {
-    return methodName.equals("clone") && returnType.equals(CD_Object) && (args.length == 0);
+  boolean is_object_clone(
+      @Identifier String methodName, ClassDesc returnType, ClassDesc[] paramTypes) {
+    return methodName.equals("clone") && returnType.equals(CD_Object) && (paramTypes.length == 0);
   }
 
   /**
@@ -3352,9 +3350,9 @@ public class DCInstrument24 {
 
     // Get the parameter types for this method.
     ClassDesc[] paramTypes = mgen.getParameterTypes();
-    @ClassGetName String[] arg_type_strings = new @ClassGetName String[paramTypes.length];
+    @ClassGetName String[] param_type_strings = new @ClassGetName String[paramTypes.length];
     for (int i = 0; i < paramTypes.length; i++) {
-      arg_type_strings[i] = Instrument24.classDescToClassGetName(paramTypes[i]);
+      param_type_strings[i] = Instrument24.classDescToClassGetName(paramTypes[i]);
     }
 
     // Loop through each instruction and find the line number for each return opcode.
@@ -3396,7 +3394,7 @@ public class DCInstrument24 {
     }
 
     return new MethodInfo(
-        classInfo, mgen.getName(), paramNames, arg_type_strings, exit_line_numbers, isIncluded);
+        classInfo, mgen.getName(), paramNames, param_type_strings, exit_line_numbers, isIncluded);
   }
 
   /**
@@ -4634,7 +4632,7 @@ public class DCInstrument24 {
 
     // Add the dcomp marker argument to indicate this is the
     // instrumented version of the method.
-    BcelUtils24.addNewSpecialLocal(mgen, "marker", dcomp_marker, minfo, true);
+    BcelUtils24.addNewSpecialLocal(mgen, minfo, "marker", dcomp_marker, true);
   }
 
   /**

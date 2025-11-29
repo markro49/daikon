@@ -203,7 +203,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
       // Write a BCEL-like file.
       BcelUtil.dump(c, directory);
     } catch (Throwable t) {
-      System.err.printf("Unexpected error %s writing debug files for: %s%n", t, className);
+      System.err.printf("Error %s writing debug files for: %s%n", t, className);
       if (debug_transform.enabled) {
         t.printStackTrace();
       }
@@ -233,7 +233,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
     debug_transform.log("%nEntering chicory.Instrument.transform(): class = %s%n", className);
 
     if (className == null) {
-      // most likely a lambda related class
+      // most likely a lambda-related class
       return null;
     }
 
@@ -270,7 +270,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
       ClassParser parser = new ClassParser(bais, className);
       c = parser.parse();
     } catch (Throwable t) {
-      System.err.printf("Unexpected error %s while parsing bytes of %s%n", t, binaryClassName);
+      System.err.printf("Error %s while parsing bytes of %s%n", t, binaryClassName);
       if (debug_transform.enabled) {
         t.printStackTrace();
       }
@@ -291,7 +291,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
       instrumentClass(cg, classInfo);
       njc = cg.getJavaClass();
     } catch (Throwable t) {
-      System.err.printf("Unexpected error %s in transform of %s%n", t, binaryClassName);
+      System.err.printf("Error %s in transform of %s%n", t, binaryClassName);
       if (debug_transform.enabled) {
         t.printStackTrace();
       }
@@ -1218,9 +1218,9 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
     }
     // Get the parameter types for this method.
     Type[] paramTypes = mgen.getArgumentTypes();
-    @ClassGetName String[] arg_type_strings = new @ClassGetName String[paramTypes.length];
+    @ClassGetName String[] param_type_strings = new @ClassGetName String[paramTypes.length];
     for (int ii = 0; ii < paramTypes.length; ii++) {
-      arg_type_strings[ii] = typeToClassGetName(paramTypes[ii]);
+      param_type_strings[ii] = typeToClassGetName(paramTypes[ii]);
     }
 
     // Loop through each instruction and find the line number for each return opcode.
@@ -1291,7 +1291,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
 
     if (shouldInclude) {
       return new MethodInfo(
-          classInfo, mgen.getName(), paramNames, arg_type_strings, exit_line_numbers, isIncluded);
+          classInfo, mgen.getName(), paramNames, param_type_strings, exit_line_numbers, isIncluded);
     } else {
       return null;
     }
