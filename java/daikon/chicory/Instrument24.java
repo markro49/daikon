@@ -969,19 +969,19 @@ public class Instrument24 implements ClassFileTransformer {
 
       CodeElement inst = li.next();
 
-      // back up iterator to point to 'inst'
+      // back up iterator to point to `inst`
       li.previous();
 
       // If this is a return instruction, insert method exit instrumentation
       List<CodeElement> new_il =
           generate_return_instrumentation(inst, mgen, minfo, shouldIncludeIter, exitLocationIter);
 
-      // insert instrumentation code prior to 'inst'
+      // insert instrumentation code prior to `inst`
       for (CodeElement ce : new_il) {
         li.add(ce);
       }
 
-      // skip over 'inst' we just inserted new_il in front of
+      // skip over `inst` we just inserted new_il in front of
       li.next();
     }
   }
