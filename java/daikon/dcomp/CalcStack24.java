@@ -549,6 +549,7 @@ public final class CalcStack24 {
               return true;
             }
 
+          // operand stack: no change
           case Opcode.GOTO:
           case Opcode.GOTO_W:
             {
@@ -620,6 +621,7 @@ public final class CalcStack24 {
             addLabelsToWorklist(bi.target(), null, stack);
             return true;
 
+          // operand stack: no change
           case Opcode.IINC:
           case Opcode.IINC_W:
           case Opcode.NOP:
