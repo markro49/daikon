@@ -693,7 +693,7 @@ public class DCInstrument extends InstructionListUtils {
           }
         }
 
-        // Can't duplicate 'main' or 'clinit' or a JUnit test.
+        // Can't duplicate "main" or "clinit" or a JUnit test.
         boolean replacingMethod = BcelUtil.isMain(mg) || BcelUtil.isClinit(mg) || junit_test_class;
         try {
           if (has_code) {
@@ -1487,7 +1487,7 @@ public class DCInstrument extends InstructionListUtils {
   }
 
   /**
-   * Transforms instructions to track comparability. Returns a list of instructions that replaces
+   * Transforms one instruction to track comparability. Returns a list of instructions that replaces
    * the specified instruction. Returns null if the instruction should not be replaced.
    *
    * @param mg method being instrumented

@@ -458,13 +458,13 @@ public class Instrument24 implements ClassFileTransformer {
 
         // Get the translation for this instruction (if any).
         if (inst instanceof ReturnInstruction) {
-          // Back up iterator to point before 'inst'.
+          // Back up iterator to point before `inst`.
           li.previous();
-          // Insert code prior to 'inst'.
+          // Insert code prior to `inst`.
           for (CodeElement ce : call_initNotify(mgen.getPoolBuilder(), classInfo)) {
             li.add(ce);
           }
-          // Skip over 'inst' we just inserted new_il in front of.
+          // Skip over `inst` we just inserted new_il in front of.
           li.next();
         }
       }
@@ -894,7 +894,7 @@ public class Instrument24 implements ClassFileTransformer {
       minfo.labelMap.put(inst, minfo.entryLabel);
 
       // Insert code before this LineNumber or Instruction.
-      // Back up iterator to point to 'inst'.
+      // Back up iterator to point to `inst`.
       li.previous();
       for (CodeElement ce : newCode) {
         li.add(ce);
