@@ -798,7 +798,7 @@ public class DCInstrument extends InstructionListUtils {
    * @param method_name method to be checked
    * @return true if the given method is a JUnit trigger
    */
-  boolean isJunitTrigger(String classname, String method_name) {
+  boolean isJunitTrigger(String classname, @Identifier String method_name) {
     if (classname.contains("JUnitCommandLineParseResult") && method_name.equals("parse")) {
       // JUnit 4
       return true;
