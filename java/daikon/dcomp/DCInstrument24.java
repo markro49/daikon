@@ -115,7 +115,6 @@ import org.checkerframework.checker.signature.qual.ClassGetName;
 import org.checkerframework.checker.signature.qual.DotSeparatedIdentifiers;
 import org.checkerframework.checker.signature.qual.FieldDescriptor;
 import org.checkerframework.checker.signature.qual.Identifier;
-import org.checkerframework.checker.signature.qual.InternalForm;
 import org.checkerframework.checker.signature.qual.MethodDescriptor;
 import org.checkerframework.dataflow.qual.Pure;
 
@@ -2415,7 +2414,6 @@ public class DCInstrument24 {
       System.out.println("searching interfaces of: " + ClassGen24.getClassName(startClass));
     }
     for (ClassEntry classEntry : startClass.interfaces()) {
-      @SuppressWarnings("signature:assignment") // need JDK annotations
       @BinaryName String interfaceName = classEntry.asInternalName().replace('/', '.');
       if (debugGetDefiningInterface) {
         System.out.println("interface: " + interfaceName);
@@ -2498,9 +2496,7 @@ public class DCInstrument24 {
   private List<CodeElement> handleInvoke(InvokeInstruction invoke, MethodGen24 mgen) {
 
     // Get information about the call.
-    @SuppressWarnings("signature:assignment") // JDK java.lang.classfile 24 is not yet annotated
-    @InternalForm String classnameInternalForm = invoke.owner().asInternalName();
-    @BinaryName String classname = classnameInternalForm.replace('/', '.');
+    @BinaryName String classname = invoke.owner().asInternalName().replace('/', '.');
     String methodName = invoke.name().stringValue();
     MethodTypeDesc mtd = invoke.typeSymbol();
     ClassDesc returnType = mtd.returnType();
@@ -3144,7 +3140,6 @@ public class DCInstrument24 {
     List<CodeElement> il = new ArrayList<>();
     Opcode op = fi.opcode();
     String fieldName = fi.name().stringValue();
-    @SuppressWarnings("signature:assignment") // type conversion
     @BinaryName String owner = fi.owner().asInternalName().replace('/', '.');
     ClassDesc ownerCD = fi.owner().asSymbol();
 
@@ -3449,7 +3444,7 @@ public class DCInstrument24 {
    * @param base_type type of array store
    * @return instruction list that calls the runtime to handle the array store instruction
    */
-  List<CodeElement> array_store(CodeElement inst, String method, ClassDesc base_type) {
+  List<CodeElement> array_store(CodeElement inst, @Identifier String method, ClassDesc base_type) {
     List<CodeElement> il = new ArrayList<>();
     ClassDesc array_type = base_type.arrayType(1);
     // if (method.equals("aastore")) {
