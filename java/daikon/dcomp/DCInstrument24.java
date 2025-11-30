@@ -121,9 +121,9 @@ import org.checkerframework.dataflow.qual.Pure;
 /**
  * Instruments a class file to perform Dynamic Comparability.
  *
- * <p>The DCInstrument24 class is responsible for modifying another class's bytecodes. Specifically,
- * its main task is to add calls into the DynComp Runtime to calculate comparability values. These
- * added calls are sometimes referred to as "hooks".
+ * <p>This class is responsible for modifying bytecodes. Specifically, its main task is to add calls
+ * into the DynComp Runtime to calculate comparability values. These added calls are sometimes
+ * referred to as "hooks".
  *
  * <p>Instrument24 and DCInstrument24 use Java's ({@code java.lang.classfile}) APIs for reading and
  * modifying .class files. Those APIs were added in JDK 24. Compared to BCEL, these APIs are more
@@ -194,10 +194,10 @@ public class DCInstrument24 {
 
   // Variables used for the entire class.
 
-  /** The current ClassFile. */
+  /** The current classfile. */
   protected ClassFile classFile;
 
-  /** The current ClassModel. */
+  /** The current class. */
   protected ClassModel classModel;
 
   /** ConstantPool builder for current class. */
@@ -221,28 +221,45 @@ public class DCInstrument24 {
   /** Local that stores the tag frame for the current method. */
   protected LocalVariable tagFrameLocal;
 
-  // Argument descriptors
+  // Type descriptors
 
-  /** Type array with two objects. */
-  protected static ClassDesc[] two_objects_arg = {CD_Object, CD_Object};
+  /** "java.lang.Object[]". */
+  protected static final ClassDesc objectArrayCD = CD_Object.arrayType(1);
+
+  /** The special DCompMarker type. */
+  protected final ClassDesc dcomp_marker;
+
+  // Signature descriptors
+
+  // No arguments
+
+  /** Type array with no arguments. */
+  protected static final ClassDesc[] noArgsSig = new ClassDesc[0];
+
+  // One argument
 
   /** Type array with an int. */
-  protected static ClassDesc[] integer_arg = {CD_int};
+  protected static ClassDesc[] intSig = {CD_int};
+
+  /** Type array with an long. */
+  protected static ClassDesc[] longSig = {CD_long};
 
   /** Type array with an object. */
   protected static ClassDesc[] object_arg = {CD_Object};
 
-  /** ClassDesc for the special dcomp_marker argument. */
-  protected final ClassDesc dcomp_marker;
-
-  /** ClassDesc for an Object array. */
-  protected static final ClassDesc objectArrayCD = CD_Object.arrayType(1);
-
   /** Type array with an Object array. */
   protected static final ClassDesc[] objectArrayCD_arg = {objectArrayCD};
 
-  /** Type array with no arguments. */
-  protected static final ClassDesc[] noArgsCD = new ClassDesc[0];
+  // Two arguments
+
+  /** Type array with a long and an int. */
+  protected static ClassDesc[] longIntSig = {CD_long, CD_int};
+
+  /** Type array with an long. */
+  protected static ClassDesc[] longSig = {CD_long};
+
+  /** Type array with two objects. */
+  protected static ClassDesc[] objectObjectSig = {CD_Object, CD_Object};
 
   // Debug loggers
 
@@ -280,7 +297,7 @@ public class DCInstrument24 {
   protected @DotSeparatedIdentifiers String dcomp_prefix;
 
   /** Either "daikon.dcomp.DCRuntime" or "java.lang.DCRuntime". */
-  private @BinaryName String dcompRuntimeClassname;
+  private @DotSeparatedIdentifiers String dcompRuntimeClassname;
 
   /** The ClassDesc for the DynComp runtime support class. */
   private ClassDesc runtimeCD;
@@ -345,15 +362,15 @@ public class DCInstrument24 {
    * {@link #handleInvoke} routine.
    */
   protected static MethodDef[] obj_methods = {
-    new MethodDef("finalize", new ClassDesc[0]),
-    new MethodDef("getClass", new ClassDesc[0]),
-    new MethodDef("hashCode", new ClassDesc[0]),
-    new MethodDef("notify", new ClassDesc[0]),
-    new MethodDef("notifyall", new ClassDesc[0]),
-    new MethodDef("toString", new ClassDesc[0]),
-    new MethodDef("wait", new ClassDesc[0]),
-    new MethodDef("wait", new ClassDesc[] {CD_long}),
-    new MethodDef("wait", new ClassDesc[] {CD_long, CD_int}),
+    new MethodDef("finalize", noArgsSig),
+    new MethodDef("getClass", noArgsSig),
+    new MethodDef("hashCode", noArgsSig),
+    new MethodDef("notify", noArgsSig),
+    new MethodDef("notifyall", noArgsSig),
+    new MethodDef("toString", noArgsSig),
+    new MethodDef("wait", noArgsSig),
+    new MethodDef("wait", longSig),
+    new MethodDef("wait", longIntSig),
   };
 
   /** Represents a method (by its name and argument types). */
@@ -480,7 +497,7 @@ public class DCInstrument24 {
 
     // If a class has an EvoSuite annotation it may be instrumented by Evosuite;
     // thus, we should not instrument it before Evosuite does.
-    for (Attribute<?> attribute : classModel.attributes()) {
+    for (final Attribute<?> attribute : classModel.attributes()) {
       if (attribute instanceof RuntimeVisibleAnnotationsAttribute rvaa) {
         for (final Annotation item : rvaa.annotations()) {
           if (item.className().stringValue().startsWith("Lorg/evosuite/runtime")) {
@@ -537,10 +554,11 @@ public class DCInstrument24 {
       debugInstrument.log("  %s%n", ce.asInternalName());
     }
 
-    // Handle object methods for this class
+    trackClass = false;
+
+    // Handle object methods for this class.
     add_clone_and_tostring_interfaces(classGen);
 
-    trackClass = false;
     boolean junit_test_class = false;
 
     if (!in_jdk) {
@@ -3111,7 +3129,7 @@ public class DCInstrument24 {
 
     MethodRefEntry mre =
         poolBuilder.methodRefEntry(
-            runtimeCD, compare_method, MethodTypeDesc.of(CD_boolean, two_objects_arg));
+            runtimeCD, compare_method, MethodTypeDesc.of(CD_boolean, objectObjectSig));
     il.add(InvokeInstruction.of(Opcode.INVOKESTATIC, mre));
     il.add(BranchInstruction.of(boolean_if, branch.target()));
     return il;
@@ -3149,7 +3167,7 @@ public class DCInstrument24 {
         il.add(dcr_call("push_const", CD_void, noArgsCD));
       } else {
         il.add(loadIntegerConstant(1));
-        il.add(dcr_call("discard_tag", CD_void, integer_arg));
+        il.add(dcr_call("discard_tag", CD_void, intSig));
       }
 
       // Perform the original field command.
@@ -3610,7 +3628,7 @@ public class DCInstrument24 {
   List<CodeElement> discard_tag_code(CodeElement inst, int tag_count) {
     List<CodeElement> il = new ArrayList<>();
     il.add(loadIntegerConstant(tag_count));
-    il.add(dcr_call("discard_tag", CD_void, integer_arg));
+    il.add(dcr_call("discard_tag", CD_void, intSig));
     if (inst != null) {
       il.add(inst);
     }
