@@ -164,12 +164,15 @@ public class DCInstrument extends InstructionListUtils {
   // No arguments
 
   /** Type array with no arguments. */
-  protected static final ClassDesc[] noArgsSig = new Type[0];
+  protected static final Type[] noArgsSig = new Type[0];
 
   // One argument
 
   /** Type array with an int. */
   protected static Type[] intSig = new Type[] {Type.INT};
+
+  /** Type array with a long. */
+  protected static Type[] longSig = new Type[] {Type.LONG};
 
   /** Type array with a string. */
   protected static Type[] string_arg = new Type[] {Type.STRING};
@@ -179,8 +182,11 @@ public class DCInstrument extends InstructionListUtils {
 
   // Two arguments
 
+  /** Type array with a long and an int. */
+  protected static Type[] longIntSig = new Type[] {Type.LONG, Type.INT};
+
   /** Type array with an object and an int. */
-  protected static Type[] object_int = new Type[] {Type.OBJECT, Type.INT};
+  protected static Type[] objectIntSig = new Type[] {Type.OBJECT, Type.INT};
 
   /** Type array with two objects. */
   protected static Type[] objectObjectSig = new Type[] {Type.OBJECT, Type.OBJECT};
@@ -421,13 +427,13 @@ public class DCInstrument extends InstructionListUtils {
       }
     }
 
+    // Create the ClassInfo for this class and its list of methods
+    ClassInfo classInfo = new ClassInfo(classname, loader);
+    boolean trackClass = false;
+
     debug_transform.log(
         "%nInstrumenting class%s: %s%n", in_jdk ? " (in JDK)" : "", classInfo.class_name);
     debug_transform.indent();
-
-    // Create the ClassInfo for this class and its list of methods
-    ClassInfo class_info = new ClassInfo(classname, loader);
-    boolean trackClass = false;
 
     // Handle object methods for this class.
     add_clone_and_tostring_interfaces(classGen);
@@ -450,160 +456,163 @@ public class DCInstrument extends InstructionListUtils {
 
     boolean junit_test_class = false;
 
-    // A very tricky special case: If JUnit is running and the current
-    // class has been passed to JUnit on the command line, then this
-    // is a JUnit test class and our normal instrumentation will
-    // cause JUnit to complain about multiple constructors and
-    // methods that should have no arguments. To work around these
-    // restrictions, we replace rather than duplicate each method
-    // we instrument and we do not add the dcomp marker argument.
-    // We must also remember the class name so if we see a subsequent
-    // call to one of its methods we do not add the dcomp argument.
+    if (!in_jdk) {
+      // A very tricky special case: If JUnit is running and the current
+      // class has been passed to JUnit on the command line, then this
+      // is a JUnit test class and our normal instrumentation will
+      // cause JUnit to complain about multiple constructors and
+      // methods that should have no arguments. To work around these
+      // restrictions, we replace rather than duplicate each method
+      // we instrument and we do not add the dcomp marker argument.
+      // We must also remember the class name so if we see a subsequent
+      // call to one of its methods we do not add the dcomp argument.
 
-    debugInstrument.log("junit_state: %s%n", junit_state);
+      debugInstrument.log("junit_state: %s%n", junit_state);
 
-    StackTraceElement[] stack_trace;
+      StackTraceElement[] stack_trace;
 
-    switch (junit_state) {
-      case NOT_SEEN:
-        if (classname.startsWith("org.junit")) {
-          junit_state = JunitState.STARTING;
-        }
-        break;
-
-      case STARTING:
-        // Now check to see if JUnit is looking for test class(es).
-        stack_trace = Thread.currentThread().getStackTrace();
-        // [0] is getStackTrace
-        for (int i = 1; i < stack_trace.length; i++) {
-          if (debugJunitAnalysis) {
-            System.out.printf(
-                "%s : %s%n", stack_trace[i].getClassName(), stack_trace[i].getMethodName());
+      switch (junit_state) {
+        case NOT_SEEN:
+          if (classname.startsWith("org.junit")) {
+            junit_state = JunitState.STARTING;
           }
-          if (isJunitTrigger(stack_trace[i].getClassName(), stack_trace[i].getMethodName())) {
-            junit_parse_seen = true;
-            junit_state = JunitState.TEST_DISCOVERY;
-            break;
-          }
-        }
-        break;
+          break;
 
-      case TEST_DISCOVERY:
-        // Now check to see if JUnit is done looking for test class(es).
-        boolean local_junit_parse_seen = false;
-        stack_trace = Thread.currentThread().getStackTrace();
-        // [0] is getStackTrace
-        for (int i = 1; i < stack_trace.length; i++) {
-          if (debugJunitAnalysis) {
-            System.out.printf(
-                "%s : %s%n", stack_trace[i].getClassName(), stack_trace[i].getMethodName());
-          }
-          if (isJunitTrigger(stack_trace[i].getClassName(), stack_trace[i].getMethodName())) {
-            local_junit_parse_seen = true;
-            break;
-          }
-        }
-        if (junit_parse_seen && !local_junit_parse_seen) {
-          junit_parse_seen = false;
-          junit_state = JunitState.RUNNING;
-        } else if (!junit_parse_seen && local_junit_parse_seen) {
-          junit_parse_seen = true;
-        }
-        break;
-
-      case RUNNING:
-        if (debugJunitAnalysis) {
+        case STARTING:
+          // Now check to see if JUnit is looking for test class(es).
           stack_trace = Thread.currentThread().getStackTrace();
           // [0] is getStackTrace
           for (int i = 1; i < stack_trace.length; i++) {
-            System.out.printf(
-                "%s : %s%n", stack_trace[i].getClassName(), stack_trace[i].getMethodName());
-          }
-        }
-        // nothing to do
-        break;
-
-      default:
-        throw new Error("invalid junit_state");
-    }
-
-    debugInstrument.log("junit_state: %s%n", junit_state);
-
-    if (junit_state == JunitState.TEST_DISCOVERY) {
-      // We have a possible JUnit test class.  We need to verify by
-      // one of two methods.  Either the class is a subclass of
-      // junit.framework.TestCase or one of its methods has a
-      // RuntimeVisibleAnnotation of org/junit/Test.
-      Deque<String> classnameStack = new ArrayDeque<>();
-      String super_class;
-      String this_class = classname;
-      while (true) {
-        super_class = getSuperclassName(this_class);
-        if (super_class == null) {
-          // something has gone wrong
-          break;
-        }
-        if (debugJunitAnalysis) {
-          System.out.printf("this_class: %s%n", this_class);
-          System.out.printf("super_class: %s%n", super_class);
-        }
-        if (super_class.equals("junit.framework.TestCase")) {
-          // This is a JUnit test class and so are the
-          // elements of classnameStack.
-          junit_test_class = true;
-          junitTestClasses.add(this_class);
-          while (!classnameStack.isEmpty()) {
-            junitTestClasses.add(classnameStack.pop());
-          }
-          break;
-        } else if (super_class.equals("java.lang.Object")) {
-          // We're done; not a JUnit test class.
-          // Ignore items on classnameStack.
-          break;
-        }
-        // Recurse and check the super_class.
-        classnameStack.push(this_class);
-        this_class = super_class;
-      }
-    }
-
-    // Even if we have not detected that JUnit is active, any class that
-    // contains a method with a RuntimeVisibleAnnotation of org/junit/Test
-    // needs to be marked as a JUnit test class. (Daikon issue #536)
-
-    if (!junit_test_class) {
-      // need to check for JUnit Test annotation on a method
-      searchloop:
-      for (Method m : classGen.getMethods()) {
-        for (final Attribute attribute : m.getAttributes()) {
-          if (attribute instanceof RuntimeVisibleAnnotations) {
             if (debugJunitAnalysis) {
-              System.out.printf("attribute: %s%n", attribute.toString());
+              System.out.printf(
+                  "%s : %s%n", stack_trace[i].getClassName(), stack_trace[i].getMethodName());
             }
-            for (final AnnotationEntry item : ((Annotations) attribute).getAnnotationEntries()) {
+            if (isJunitTrigger(stack_trace[i].getClassName(), stack_trace[i].getMethodName())) {
+              junit_parse_seen = true;
+              junit_state = JunitState.TEST_DISCOVERY;
+              break;
+            }
+          }
+          break;
+
+        case TEST_DISCOVERY:
+          // Now check to see if JUnit is done looking for test class(es).
+          boolean local_junit_parse_seen = false;
+          stack_trace = Thread.currentThread().getStackTrace();
+          // [0] is getStackTrace
+          for (int i = 1; i < stack_trace.length; i++) {
+            if (debugJunitAnalysis) {
+              System.out.printf(
+                  "%s : %s%n", stack_trace[i].getClassName(), stack_trace[i].getMethodName());
+            }
+            if (isJunitTrigger(stack_trace[i].getClassName(), stack_trace[i].getMethodName())) {
+              local_junit_parse_seen = true;
+              break;
+            }
+          }
+          if (junit_parse_seen && !local_junit_parse_seen) {
+            junit_parse_seen = false;
+            junit_state = JunitState.RUNNING;
+          } else if (!junit_parse_seen && local_junit_parse_seen) {
+            junit_parse_seen = true;
+          }
+          break;
+
+        case RUNNING:
+          if (debugJunitAnalysis) {
+            stack_trace = Thread.currentThread().getStackTrace();
+            // [0] is getStackTrace
+            for (int i = 1; i < stack_trace.length; i++) {
+              System.out.printf(
+                  "%s : %s%n", stack_trace[i].getClassName(), stack_trace[i].getMethodName());
+            }
+          }
+          // nothing to do
+          break;
+
+        default:
+          throw new DynCompError("invalid junit_state");
+      }
+
+      debugInstrument.log("junit_state: %s%n", junit_state);
+
+      if (junit_state == JunitState.TEST_DISCOVERY) {
+        // We have a possible JUnit test class.  We need to verify by
+        // one of two methods.  Either the class is a subclass of
+        // junit.framework.TestCase or one of its methods has a
+        // RuntimeVisibleAnnotation of org/junit/Test.
+        Deque<String> classnameStack = new ArrayDeque<>();
+        String super_class;
+        String this_class = classname;
+        while (true) {
+          super_class = getSuperclassName(this_class);
+          if (super_class == null) {
+            // something has gone wrong
+            break;
+          }
+          if (debugJunitAnalysis) {
+            System.out.printf("this_class: %s%n", this_class);
+            System.out.printf("super_class: %s%n", super_class);
+          }
+          if (super_class.equals("junit.framework.TestCase")) {
+            // This is a JUnit test class and so are the
+            // elements of classnameStack.
+            junit_test_class = true;
+            junitTestClasses.add(this_class);
+            while (!classnameStack.isEmpty()) {
+              junitTestClasses.add(classnameStack.pop());
+            }
+            break;
+          } else if (super_class.equals("java.lang.Object")) {
+            // We're done; not a JUnit test class.
+            // Ignore items on classnameStack.
+            break;
+          }
+          // Recurse and check the super_class.
+          classnameStack.push(this_class);
+          this_class = super_class;
+        }
+      }
+
+      // Even if we have not detected that JUnit is active, any class that
+      // contains a method with a RuntimeVisibleAnnotation of org/junit/Test
+      // needs to be marked as a JUnit test class. (Daikon issue #536)
+
+      if (!junit_test_class) {
+        // need to check for JUnit Test annotation on a method
+        searchloop:
+        for (Method m : classGen.getMethods()) {
+          for (final Attribute attribute : m.getAttributes()) {
+            if (attribute instanceof RuntimeVisibleAnnotations) {
               if (debugJunitAnalysis) {
-                System.out.printf("item: %s%n", item.toString());
+                System.out.printf("attribute: %s%n", attribute.toString());
               }
-              if (item.toString().endsWith("org/junit/Test;") // JUnit 4
-                  || item.toString().endsWith("org/junit/jupiter/api/Test;") // JUnit 5
-              ) {
-                junit_test_class = true;
-                junitTestClasses.add(classname);
-                break searchloop;
+              for (final AnnotationEntry item : ((Annotations) attribute).getAnnotationEntries()) {
+                String description = item.toString();
+                if (debugJunitAnalysis) {
+                  System.out.printf("item: %s%n", description);
+                }
+                if (description.endsWith("org/junit/Test;") // JUnit 4
+                    || description.endsWith("org/junit/jupiter/api/Test;") // JUnit 5
+                ) {
+                  junit_test_class = true;
+                  junitTestClasses.add(classname);
+                  break searchloop;
+                }
               }
             }
           }
         }
       }
+
+      if (junit_test_class) {
+        debugInstrument.log("JUnit test class: %s%n", classname);
+      } else {
+        debugInstrument.log("Not a JUnit test class: %s%n", classname);
+      }
     }
 
-    if (junit_test_class) {
-      debugInstrument.log("JUnit test class: %s%n", classname);
-    } else {
-      debugInstrument.log("Not a JUnit test class: %s%n", classname);
-    }
-
-    // Process each method
+    // Process each method in the class.
     for (Method m : classGen.getMethods()) {
 
       tagFrameLocal = null;
@@ -667,8 +676,8 @@ public class DCInstrument extends InstructionListUtils {
           // and add it to the list for this class.
           MethodInfo mi = null;
           if (track && has_code) {
-            mi = create_method_info(class_info, mg);
-            class_info.method_infos.add(mi);
+            mi = create_method_info(classInfo, mg);
+            classInfo.method_infos.add(mi);
             DCRuntime.methods.add(mi);
           }
 
@@ -677,7 +686,7 @@ public class DCInstrument extends InstructionListUtils {
             // Create the local to store the tag frame for this method
             tagFrameLocal = create_tagFrameLocal(mg);
             build_exception_handler(mg);
-            instrument_method(mg);
+            instrumentMethod(mg);
             if (track) {
               add_enter(mg, mi, DCRuntime.methods.size() - 1);
               add_exit(mg, mi, DCRuntime.methods.size() - 1);
@@ -788,9 +797,9 @@ public class DCInstrument extends InstructionListUtils {
     // needs to know what classes are instrumented.  Its looks in the
     // Chicory runtime for this information.
     if (trackClass) {
-      debug_transform.log("DCInstrument adding %s to all class list%n", class_info);
+      debug_transform.log("DCInstrument adding %s to all class list%n", classInfo);
       synchronized (daikon.chicory.SharedData.all_classes) {
-        daikon.chicory.SharedData.all_classes.add(class_info);
+        daikon.chicory.SharedData.all_classes.add(classInfo);
       }
     }
     debug_transform.log("Instrumentation complete: %s%n", classname);
@@ -801,7 +810,7 @@ public class DCInstrument extends InstructionListUtils {
   /**
    * Returns true if the specified classname.method_name is the root of JUnit startup code.
    *
-   * @param classname class to be checked
+   * @param classname class containing the given method
    * @param method_name method to be checked
    * @return true if the given method is a JUnit trigger
    */
@@ -864,6 +873,7 @@ public class DCInstrument extends InstructionListUtils {
     // the marker argument causes subtle errors
     if ((classGen.getModifiers() & Const.ACC_ANNOTATION) != 0) {
       debug_transform.log("Not instrumenting annotation %s%n", classname);
+      // Return classfile unmodified.
       // MUST NOT RETURN NULL
       return classGen.getJavaClass().copy();
     }
@@ -875,6 +885,7 @@ public class DCInstrument extends InstructionListUtils {
       String packageName = classname.substring(0, i);
       if (Premain.problem_packages.contains(packageName)) {
         debug_transform.log("Skipping problem package %s%n", packageName);
+        // Return classfile unmodified.
         return classGen.getJavaClass().copy();
       }
     }
@@ -884,6 +895,7 @@ public class DCInstrument extends InstructionListUtils {
       // See Premain.java for a list and explanations.
       if (Premain.problem_classes.contains(classname)) {
         debug_transform.log("Skipping problem class %s%n", classname);
+        // Return classfile unmodified.
         return classGen.getJavaClass().copy();
       }
       dcompRuntimeClassName = "java.lang.DCRuntime";
@@ -958,7 +970,7 @@ public class DCInstrument extends InstructionListUtils {
             // Create the local to store the tag frame for this method
             tagFrameLocal = create_tagFrameLocal(mg);
             build_exception_handler(mg);
-            instrument_method(mg);
+            instrumentMethod(mg);
             install_exception_handler(mg);
           }
         }
@@ -1061,7 +1073,7 @@ public class DCInstrument extends InstructionListUtils {
    *
    * @param mg MethodGen for the method to be instrumented
    */
-  public void instrument_method(MethodGen mg) {
+  public void instrumentMethod(MethodGen mg) {
 
     // Because the tagFrameLocal is active for the entire method
     // and its creation will change the state of the locals layout,
@@ -1146,10 +1158,10 @@ public class DCInstrument extends InstructionListUtils {
    * Adds the method name and containing class name to {@code skip_methods}, the list of
    * uninstrumented methods.
    *
-   * @param mg method to add to skipped_methods list
+   * @param m method to add to skipped_methods list
    */
-  void skip_method(MethodGen mg) {
-    skipped_methods.add(mg.getClassName() + "." + mg.getName());
+  void skip_method(MethodGen m) {
+    skipped_methods.add(m.getClassName() + "." + m.getName());
   }
 
   /**
@@ -2781,11 +2793,11 @@ public class DCInstrument extends InstructionListUtils {
    * Creates a MethodInfo corresponding to the specified method. The exit locations are filled in,
    * but the reflection information is not generated. Returns null if there are no instructions.
    *
-   * @param class_info class containing the method
+   * @param classInfo class containing the method
    * @param mg method to inspect
    * @return a new MethodInfo for the method, or null if the method should not be instrumented
    */
-  @Nullable MethodInfo create_method_info(ClassInfo class_info, MethodGen mg) {
+  @Nullable MethodInfo create_method_info(ClassInfo classInfo, MethodGen mg) {
 
     // if (mg.getName().equals("<clinit>")) {
     //   // This case DOES occur at run time.  -MDE 1/22/2010
@@ -2870,7 +2882,7 @@ public class DCInstrument extends InstructionListUtils {
     }
 
     return new MethodInfo(
-        class_info, mg.getName(), paramNames, param_type_strings, exit_line_numbers, isIncluded);
+        classInfo, mg.getName(), paramNames, param_type_strings, exit_line_numbers, isIncluded);
   }
 
   /**
@@ -3844,10 +3856,10 @@ public class DCInstrument extends InstructionListUtils {
       params = intSig;
     } else if (is_class_initialized_by_jvm(classGen.getClassName())) {
       methodname = "push_field_tag_null_ok";
-      params = object_int;
+      params = objectIntSig;
     } else {
       methodname = "push_field_tag";
-      params = object_int;
+      params = objectIntSig;
     }
 
     String classname = classGen.getClassName();
@@ -3919,7 +3931,7 @@ public class DCInstrument extends InstructionListUtils {
   MethodGen create_set_tag(ClassGen classGen, Field f, int tag_offset) {
 
     String methodname = "pop_field_tag";
-    Type[] params = object_int;
+    Type[] params = objectIntSig;
     if (f.isStatic()) {
       methodname = "pop_static_tag";
       params = intSig;

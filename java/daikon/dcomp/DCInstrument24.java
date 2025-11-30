@@ -241,7 +241,7 @@ public class DCInstrument24 {
   /** Type array with an int. */
   protected static ClassDesc[] intSig = {CD_int};
 
-  /** Type array with an long. */
+  /** Type array with a long. */
   protected static ClassDesc[] longSig = {CD_long};
 
   /** Type array with an object. */
@@ -254,9 +254,6 @@ public class DCInstrument24 {
 
   /** Type array with a long and an int. */
   protected static ClassDesc[] longIntSig = {CD_long, CD_int};
-
-  /** Type array with an long. */
-  protected static ClassDesc[] longSig = {CD_long};
 
   /** Type array with two objects. */
   protected static ClassDesc[] objectObjectSig = {CD_Object, CD_Object};
@@ -297,7 +294,7 @@ public class DCInstrument24 {
   protected @DotSeparatedIdentifiers String dcomp_prefix;
 
   /** Either "daikon.dcomp.DCRuntime" or "java.lang.DCRuntime". */
-  private @DotSeparatedIdentifiers String dcompRuntimeClassname;
+  private @DotSeparatedIdentifiers String dcompRuntimeClassName;
 
   /** The ClassDesc for the DynComp runtime support class. */
   private ClassDesc runtimeCD;
@@ -452,7 +449,7 @@ public class DCInstrument24 {
     if (BcelUtil.javaVersion == 8) {
       dcomp_prefix = "daikon.dcomp";
     }
-    dcompRuntimeClassname = Signatures.addPackage(dcomp_prefix, "DCRuntime");
+    dcompRuntimeClassName = Signatures.addPackage(dcomp_prefix, "DCRuntime");
     DCRuntime.instrumentation_interface = Signatures.addPackage(dcomp_prefix, "DCompInstrumented");
 
     // Turn on some of the logging based on debug option.
@@ -537,7 +534,7 @@ public class DCInstrument24 {
 
     @BinaryName String classname = classInfo.class_name;
     classGen = new ClassGen24(classModel, classname, classBuilder);
-    runtimeCD = ClassDesc.of(dcompRuntimeClassname);
+    runtimeCD = ClassDesc.of(dcompRuntimeClassName);
     poolBuilder = classBuilder.constantPool();
 
     debug_transform.log(
@@ -687,7 +684,7 @@ public class DCInstrument24 {
         // need to check for JUnit Test annotation on a method
         searchloop:
         for (MethodModel mm : classModel.methods()) {
-          for (Attribute<?> attribute : mm.attributes()) {
+          for (final Attribute<?> attribute : mm.attributes()) {
             if (attribute instanceof RuntimeVisibleAnnotationsAttribute rvaa) {
               if (debugJunitAnalysis) {
                 System.out.printf("attribute: %s%n", attribute);
@@ -872,7 +869,7 @@ public class DCInstrument24 {
       // throw new DynCompError("Classfile out of date");
     }
 
-    // Process each method in the class
+    // Process each method in the class.
     for (MethodModel mm : classModel.methods()) {
 
       try {
@@ -1086,7 +1083,7 @@ public class DCInstrument24 {
   }
 
   /**
-   * Instrument the given method using {@link #instrumentCode}.
+   * Instrument the specified method for dynamic comparability.
    *
    * @param methodBuilder for the given method
    * @param methodModel for the given method
@@ -1458,7 +1455,7 @@ public class DCInstrument24 {
         // Return classfile unmodified.
         return classFile.transformClass(classModel, ClassTransform.ACCEPT_ALL);
       }
-      dcompRuntimeClassname = "java.lang.DCRuntime";
+      dcompRuntimeClassName = "java.lang.DCRuntime";
     }
 
     try {
@@ -1720,9 +1717,9 @@ public class DCInstrument24 {
    * Adds the method name and containing class name to {@code skip_methods}, the list of
    * uninstrumented methods.
    *
-   * @param method method to add to skipped_methods list
+   * @param m method to add to skipped_methods list
    */
-  void skip_method(String method) {
+  void skip_method(String m) {
     skipped_methods.add(method);
   }
 
@@ -1984,7 +1981,7 @@ public class DCInstrument24 {
           // the object on top of stack is of the specified type.  We push a
           // tag for a constant, since nothing is made comparable by this.
           case Opcode.INSTANCEOF:
-            return build_il(dcr_call("push_const", CD_void, noArgsCD), inst);
+            return build_il(dcr_call("push_const", CD_void, noArgsSig), inst);
 
           // Duplicates the item on the top of stack.  If the value on the
           // top of the stack is a primitive, we need to do the same on the
@@ -2044,7 +2041,7 @@ public class DCInstrument24 {
           case Opcode.IF_ICMPLT:
           case Opcode.IF_ICMPNE:
             {
-              return build_il(dcr_call("cmp_op", CD_void, noArgsCD), inst);
+              return build_il(dcr_call("cmp_op", CD_void, noArgsSig), inst);
             }
 
           case Opcode.GETFIELD:
@@ -2112,7 +2109,7 @@ public class DCInstrument24 {
               if (((ConstantInstruction) inst).typeKind().equals(TypeKind.REFERENCE)) {
                 return null;
               }
-              return build_il(dcr_call("push_const", CD_void, noArgsCD), inst);
+              return build_il(dcr_call("push_const", CD_void, noArgsSig), inst);
             }
 
           // Push the tag for the array onto the tag stack.  This causes
@@ -2140,7 +2137,7 @@ public class DCInstrument24 {
           case Opcode.LCONST_0:
           case Opcode.LCONST_1:
             {
-              return build_il(dcr_call("push_const", CD_void, noArgsCD), inst);
+              return build_il(dcr_call("push_const", CD_void, noArgsSig), inst);
             }
 
           // Primitive Binary operators.  Each is augmented with a call to
@@ -2183,7 +2180,7 @@ public class DCInstrument24 {
           case Opcode.LSUB:
           case Opcode.LUSHR:
           case Opcode.LXOR:
-            return build_il(dcr_call("binary_tag_op", CD_void, noArgsCD), inst);
+            return build_il(dcr_call("binary_tag_op", CD_void, noArgsSig), inst);
 
           // Computed jump based on the int on the top of stack.  Since that int
           // is not made comparable to anything, we just discard its tag.  One
@@ -2233,7 +2230,7 @@ public class DCInstrument24 {
           // Throws an exception.  This clears the operand stack of the current
           // frame.  We need to clear the tag stack as well.
           case Opcode.ATHROW:
-            return build_il(dcr_call("throw_op", CD_void, noArgsCD), inst);
+            return build_il(dcr_call("throw_op", CD_void, noArgsSig), inst);
 
           // Opcodes that don't need any modifications.  Here for reference
           case Opcode.ACONST_NULL:
@@ -2606,7 +2603,7 @@ public class DCInstrument24 {
       if (debugHandleInvoke) {
         System.out.printf("push tag for return type of %s%n", returnType);
       }
-      il.add(dcr_call("push_const", CD_void, noArgsCD));
+      il.add(dcr_call("push_const", CD_void, noArgsSig));
     }
     il.add(invoke);
     return il;
@@ -3164,7 +3161,7 @@ public class DCInstrument24 {
     // If this class doesn't support tag fields, don't load/store them.
     if (!tag_fields_ok(mgen, owner)) {
       if (op.equals(Opcode.GETFIELD) || op.equals(Opcode.GETSTATIC)) {
-        il.add(dcr_call("push_const", CD_void, noArgsCD));
+        il.add(dcr_call("push_const", CD_void, noArgsSig));
       } else {
         il.add(loadIntegerConstant(1));
         il.add(dcr_call("discard_tag", CD_void, intSig));
@@ -3180,14 +3177,14 @@ public class DCInstrument24 {
           poolBuilder.methodRefEntry(
               ownerCD,
               Premain.tag_method_name(Premain.GET_TAG, owner, fieldName),
-              MethodTypeDesc.of(CD_void, noArgsCD));
+              MethodTypeDesc.of(CD_void, noArgsSig));
       il.add(InvokeInstruction.of(Opcode.INVOKESTATIC, mre));
     } else if (op.equals(Opcode.PUTSTATIC)) {
       MethodRefEntry mre =
           poolBuilder.methodRefEntry(
               ownerCD,
               Premain.tag_method_name(Premain.SET_TAG, owner, fieldName),
-              MethodTypeDesc.of(CD_void, noArgsCD));
+              MethodTypeDesc.of(CD_void, noArgsSig));
       il.add(InvokeInstruction.of(Opcode.INVOKESTATIC, mre));
     } else if (op.equals(Opcode.GETFIELD)) {
       il.add(StackInstruction.of(Opcode.DUP)); // dup 'this'
@@ -3195,7 +3192,7 @@ public class DCInstrument24 {
           poolBuilder.methodRefEntry(
               ownerCD,
               Premain.tag_method_name(Premain.GET_TAG, owner, fieldName),
-              MethodTypeDesc.of(CD_void, noArgsCD));
+              MethodTypeDesc.of(CD_void, noArgsSig));
       il.add(InvokeInstruction.of(Opcode.INVOKEVIRTUAL, mre));
     } else { // must be Opcode.PUTFIELD
       if (field_size == 2) {
@@ -3206,7 +3203,7 @@ public class DCInstrument24 {
             poolBuilder.methodRefEntry(
                 ownerCD,
                 Premain.tag_method_name(Premain.SET_TAG, owner, fieldName),
-                MethodTypeDesc.of(CD_void, noArgsCD));
+                MethodTypeDesc.of(CD_void, noArgsSig));
         il.add(InvokeInstruction.of(Opcode.INVOKEVIRTUAL, mre));
         il.add(LoadInstruction.of(TypeKind.from(field_type), lv.slot()));
       } else {
@@ -3216,7 +3213,7 @@ public class DCInstrument24 {
             poolBuilder.methodRefEntry(
                 ownerCD,
                 Premain.tag_method_name(Premain.SET_TAG, owner, fieldName),
-                MethodTypeDesc.of(CD_void, noArgsCD));
+                MethodTypeDesc.of(CD_void, noArgsSig));
         il.add(InvokeInstruction.of(Opcode.INVOKEVIRTUAL, mre));
         il.add(StackInstruction.of(Opcode.SWAP)); // swap 'value' and 'this' back
       }
@@ -3518,7 +3515,7 @@ public class DCInstrument24 {
 
     // Make the array and the count comparable. Also, pop the tags for
     // the array and the count off the tag stack.
-    il.add(dcr_call("cmp_op", CD_void, noArgsCD));
+    il.add(dcr_call("cmp_op", CD_void, noArgsSig));
 
     return il;
   }
@@ -3645,7 +3642,7 @@ public class DCInstrument24 {
       debug_dup.log("DUP -> %s [... %s]%n", "dup", stack_contents(stack, 2));
     }
     if (top.isPrimitive()) {
-      return build_il(dcr_call("dup", CD_void, noArgsCD), inst);
+      return build_il(dcr_call("dup", CD_void, noArgsSig), inst);
     }
     return null;
   }
@@ -3669,7 +3666,7 @@ public class DCInstrument24 {
     if (debug_dup.enabled) {
       debug_dup.log("DUP_X1 -> %s [... %s]%n", op, stack_contents(stack, 2));
     }
-    return build_il(dcr_call(op, CD_void, noArgsCD), inst);
+    return build_il(dcr_call(op, CD_void, noArgsSig), inst);
   }
 
   /**
@@ -3698,7 +3695,7 @@ public class DCInstrument24 {
     if (debug_dup.enabled) {
       debug_dup.log("DUP_X2 -> %s [... %s]%n", op, stack_contents(stack, 3));
     }
-    return build_il(dcr_call(op, CD_void, noArgsCD), inst);
+    return build_il(dcr_call(op, CD_void, noArgsSig), inst);
   }
 
   /**
@@ -3721,7 +3718,7 @@ public class DCInstrument24 {
     if (debug_dup.enabled) {
       debug_dup.log("DUP2 -> %s [... %s]%n", op, stack_contents(stack, 2));
     }
-    return build_il(dcr_call(op, CD_void, noArgsCD), inst);
+    return build_il(dcr_call(op, CD_void, noArgsSig), inst);
   }
 
   /**
@@ -3764,7 +3761,7 @@ public class DCInstrument24 {
     if (debug_dup.enabled) {
       debug_dup.log("DUP2_X1 -> %s [... %s]%n", op, stack_contents(stack, 3));
     }
-    return build_il(dcr_call(op, CD_void, noArgsCD), inst);
+    return build_il(dcr_call(op, CD_void, noArgsSig), inst);
   }
 
   /**
@@ -3849,7 +3846,7 @@ public class DCInstrument24 {
     if (debug_dup.enabled) {
       debug_dup.log("DUP_X2 -> %s [... %s]%n", op, stack_contents(stack, 3));
     }
-    return build_il(dcr_call(op, CD_void, noArgsCD), inst);
+    return build_il(dcr_call(op, CD_void, noArgsSig), inst);
   }
 
   /**
@@ -3904,7 +3901,7 @@ public class DCInstrument24 {
       debug_dup.log("SWAP -> %s [... %s]%n", "swap", stack_contents(stack, 2));
     }
     if (type1.isPrimitive() && type2.isPrimitive()) {
-      return build_il(dcr_call("swap", CD_void, noArgsCD), inst);
+      return build_il(dcr_call("swap", CD_void, noArgsSig), inst);
     }
     return null;
   }
@@ -3993,7 +3990,7 @@ public class DCInstrument24 {
     // push a tag if there is a primitive return value
     ClassDesc returnType = mgen.getReturnType();
     if (is_primitive(returnType)) {
-      il.add(dcr_call("push_const", CD_void, noArgsCD));
+      il.add(dcr_call("push_const", CD_void, noArgsSig));
     }
 
     // If the method is not static, push the instance on the stack
