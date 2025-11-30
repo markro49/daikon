@@ -1720,7 +1720,7 @@ public class DCInstrument24 {
    * @param m method to add to skipped_methods list
    */
   void skip_method(String m) {
-    skipped_methods.add(method);
+    skipped_methods.add(m);
   }
 
   /**
