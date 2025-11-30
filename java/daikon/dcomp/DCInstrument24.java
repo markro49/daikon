@@ -294,7 +294,7 @@ public class DCInstrument24 {
   protected @DotSeparatedIdentifiers String dcomp_prefix;
 
   /** Either "daikon.dcomp.DCRuntime" or "java.lang.DCRuntime". */
-  private @DotSeparatedIdentifiers String dcompRuntimeClassName;
+  private @BinaryName String dcompRuntimeClassName;
 
   /** The ClassDesc for the DynComp runtime support class. */
   private ClassDesc runtimeCD;
