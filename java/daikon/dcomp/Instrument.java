@@ -17,12 +17,12 @@ import org.checkerframework.checker.signature.qual.InternalForm;
 import org.checkerframework.dataflow.qual.Pure;
 
 /**
- * This class is responsible for modifying another class's bytecodes. Specifically, its main task is
- * to add calls into the DynComp Runtime for instrumentation purposes. These added calls are
- * sometimes referred to as "hooks".
+ * This class is responsible for modifying bytecodes. Specifically, its main task is to add calls
+ * into the DynComp Runtime for instrumentation purposes. These added calls are sometimes referred
+ * to as "hooks".
  *
- * <p>This class is loaded by Premain at startup. It is a ClassFileTransformer which means that its
- * {@code transform} method gets called each time the JVM loads a class.
+ * <p>This class is loaded by Premain at startup. It is a {@link ClassFileTransformer} which means
+ * that its {@link #transform} method gets called each time the JVM loads a class.
  */
 public class Instrument implements ClassFileTransformer {
 
@@ -238,7 +238,7 @@ public class Instrument implements ClassFileTransformer {
       writeDebugClassFiles(c, debug_uninstrumented_dir, binaryClassName);
     }
 
-    // Instrument the classfile, die on any errors
+    // Instrument the classfile, die on any errors.
     JavaClass njc;
     try {
       DCInstrument dci = new DCInstrument(c, in_jdk, loader);
