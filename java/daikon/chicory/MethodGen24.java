@@ -266,7 +266,6 @@ public class MethodGen24 {
 
     Optional<SignatureAttribute> sa = methodModel.findAttribute(Attributes.signature());
     if (sa.isPresent()) {
-      @SuppressWarnings("signature") // JDK 24 is not annotated yet.
       @MethodDescriptor String signature1 = sa.get().signature().stringValue();
       signature = signature1;
     } else {
@@ -327,7 +326,6 @@ public class MethodGen24 {
     this.accessFlagsMask = accessFlagsMask;
     this.methodName = methodName;
     this.mtd = mtd;
-    @SuppressWarnings("signature") // JDK 24 is not annotated as yet
     @MethodDescriptor String descriptor1 = mtd.descriptorString();
     descriptor = descriptor1;
     signature = descriptor;
@@ -367,7 +365,6 @@ public class MethodGen24 {
     // incorrect entry from the parameterArray(). This check is ugly.
     if (methodName.equals("<init>") && result.length > 0 && origLocalVariables.length > 1) {
       int dollarPos = className.lastIndexOf("$");
-      @SuppressWarnings("signature:assignment") // need JDK annotations
       @FieldDescriptor String arg0Fd = result[0].descriptorString();
       String arg0Type = Instrument24.convertDescriptorToFqBinaryName(arg0Fd);
       // Note for tests below: first local will always be 'this'.
@@ -421,7 +418,6 @@ public class MethodGen24 {
       } else {
         // UNDONE: should we assert type of paramTypes[pIndex] == type of
         // origLocalVariables[lindex]?
-        @SuppressWarnings("signature:assignment") // need JDK annotations
         @Identifier String paramName = origLocalVariables[lIndex].name().stringValue();
         result[pIndex] = paramName;
         lIndex++;
@@ -511,7 +507,6 @@ public class MethodGen24 {
     for (int pIndex = 0; pIndex < paramTypes.length; pIndex++) {
       lIndex = lBase + pIndex;
       if (lIndex < localsTable.size()) {
-        @SuppressWarnings("signature:assignment") // need JDK annotations
         @Identifier String localName = localsTable.get(lIndex).name().stringValue();
         if (!paramNames[pIndex].equals(localName)) {
           paramNames[pIndex] = localName;
@@ -793,7 +788,6 @@ public class MethodGen24 {
    * @param type the ClassDesc to translate
    */
   private String convertClassDesc(@GuardSatisfied MethodGen24 this, ClassDesc type) {
-    @SuppressWarnings("signature:assignment") // need JDK annotations
     @FieldDescriptor String arg0Fd = type.descriptorString();
     String result = daikon.chicory.Instrument24.convertDescriptorToFqBinaryName(arg0Fd);
     if (result.startsWith("java.lang.")) {

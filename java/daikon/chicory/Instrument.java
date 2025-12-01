@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 import org.apache.bcel.Const;
 import org.apache.bcel.classfile.Attribute;
 import org.apache.bcel.classfile.ClassParser;
+import org.apache.bcel.classfile.Code;
 import org.apache.bcel.classfile.Constant;
 import org.apache.bcel.classfile.ConstantUtf8;
 import org.apache.bcel.classfile.ConstantValue;
@@ -44,6 +45,7 @@ import org.apache.bcel.generic.MethodGen;
 import org.apache.bcel.generic.ObjectType;
 import org.apache.bcel.generic.PUSH;
 import org.apache.bcel.generic.Type;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.checker.signature.qual.BinaryName;
 import org.checkerframework.checker.signature.qual.ClassGetName;
@@ -1134,7 +1136,6 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
    * @param mgen describes the given method
    * @return an array of strings, each corresponding to mgen's parameter types
    */
-  @SuppressWarnings("signature") // BCEL is not annotated
   private @BinaryName String[] getFullyQualifiedParameterTypes(MethodGen mgen) {
     return ArraysPlume.mapArray(Type::toString, mgen.getArgumentTypes(), String.class);
   }
@@ -1146,7 +1147,6 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
    * @param mgen method to inspect
    * @return a new MethodInfo for the method, or null if the method should not be instrumented
    */
-  @SuppressWarnings("unchecked")
   private @Nullable MethodInfo create_method_info(ClassInfo classInfo, MethodGen mgen) {
 
     // Get the parameter names for this method.
@@ -1302,11 +1302,12 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
    *
    * @param mgen describes the given method
    */
-  @SuppressWarnings("nullness:dereference.of.nullable")
   public void dump_code_attributes(MethodGen mgen) {
     // mgen.getMethod().getCode().getAttributes() forces attributes
     // to be instantiated; mgen.getCodeAttributes() does not.
-    for (Attribute a : mgen.getMethod().getCode().getAttributes()) {
+    @SuppressWarnings("nullness:assignment")
+    @NonNull Code code = mgen.getMethod().getCode();
+    for (Attribute a : code.getAttributes()) {
       int con_index = a.getNameIndex();
       Constant c = pool.getConstant(con_index);
       String att_name = ((ConstantUtf8) c).getBytes();

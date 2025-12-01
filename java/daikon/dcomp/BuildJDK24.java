@@ -77,7 +77,7 @@ public final class BuildJDK24 {
   private static String static_field_id_filename = "dcomp_jdk_static_field_id";
 
   /** Allow BuildJDK24 to access outputDebugFiles. */
-  @SuppressWarnings("nullness")
+  @SuppressWarnings("nullness:initialization.static.field.uninitialized")
   private static daikon.dcomp.Instrument24 inst24;
 
   /**
@@ -121,7 +121,7 @@ public final class BuildJDK24 {
             "daikon.BuildJDK24 [options] dest_dir [classfiles...]",
             DynComp.class,
             DCInstrument24.class);
-    String[] cl_args = options.parse(true, args);
+    @NonNull String[] cl_args = options.parse(true, args);
     if (cl_args.length < 1) {
       System.err.println("must specify destination dir");
       options.printUsage();
@@ -144,7 +144,6 @@ public final class BuildJDK24 {
     if (cl_args.length > 1) {
 
       // Arguments are <destdir> [<classfiles>...]
-      @SuppressWarnings("nullness:assignment") // https://tinyurl.com/cfissue/3224
       @NonNull String[] class_files = Arrays.copyOfRange(cl_args, 1, cl_args.length);
 
       // Instrumenting a specific list of class files is usually used for testing.
