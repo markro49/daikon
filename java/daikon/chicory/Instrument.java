@@ -821,7 +821,7 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
       }
     }
 
-    return null;
+    throw new Error("Couldn't find the nonce local " + mgen);
   }
 
   /**
@@ -991,9 +991,8 @@ public class Instrument extends InstructionListUtils implements ClassFileTransfo
     // Assumes addInstrumentationAtEntry has been called to create the nonce local.
     // iload
     // Push the nonce.
-    LocalVariableGen nonce_lv = get_nonce_local(mgen);
-    assert nonce_lv != null
-        : "@AssumeAssertion(nullness): get_nonce_local returned null in call_enter_exit";
+    @SuppressWarnings("nullness:assignment") // the nonce local exists
+    @NonNull LocalVariableGen nonce_lv = get_nonce_local(mgen);
     newCode.append(InstructionFactory.createLoad(Type.INT, nonce_lv.getIndex()));
 
     // iconst
