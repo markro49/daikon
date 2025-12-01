@@ -871,7 +871,6 @@ public class DCInstrument24 {
           String types = "", names = "", locals = "";
 
           for (int j = 0; j < paramTypes.length; j++) {
-            @SuppressWarnings("signature:assignment") // need JDK annotations
             @FieldDescriptor String paramFD = paramTypes[j].descriptorString();
             types =
                 types + daikon.chicory.Instrument24.convertDescriptorToFqBinaryName(paramFD) + " ";
@@ -1220,7 +1219,6 @@ public class DCInstrument24 {
       for (LocalVariable lv : mgen.localsTable) {
         codeBuilder.localVariable(
             lv.slot(), lv.name().stringValue(), lv.typeSymbol(), lv.startScope(), lv.endScope());
-        @SuppressWarnings("signature:assignment") // need JDK annotations
         @FieldDescriptor String lvFD = lv.typeSymbol().descriptorString();
         debugInstrument.log(
             "  %s : %s%n", lv, daikon.chicory.Instrument24.convertDescriptorToFqBinaryName(lvFD));
@@ -1323,7 +1321,6 @@ public class DCInstrument24 {
       for (LocalVariable lv : mgen.localsTable) {
         codeBuilder.localVariable(
             lv.slot(), lv.name().stringValue(), lv.typeSymbol(), lv.startScope(), lv.endScope());
-        @SuppressWarnings("signature:assignment") // need JDK annotations
         @FieldDescriptor String lvFD = lv.typeSymbol().descriptorString();
         debugInstrument.log(
             "  %s : %s%n", lv, daikon.chicory.Instrument24.convertDescriptorToFqBinaryName(lvFD));
@@ -3591,7 +3588,6 @@ public class DCInstrument24 {
     ClassDesc[] paramTypes = mgen.getParameterTypes();
     String[] type_names = new String[paramTypes.length];
     for (int ii = 0; ii < paramTypes.length; ii++) {
-      @SuppressWarnings("signature:assignment") // need JDK annotations
       @FieldDescriptor String paramFD = paramTypes[ii].descriptorString();
       type_names[ii] = daikon.chicory.Instrument24.convertDescriptorToFqBinaryName(paramFD);
     }
