@@ -1308,7 +1308,6 @@ public class DCInstrument24 {
 
       // Create newStartLabel now so instrumentCodeList can use it.
       newStartLabel = codeBuilder.newLabel();
-      @NonNull Label testLabel = codeBuilder.newLabel();
 
       // Instrument the method
       instrumentCodeList(codeModel, mgen, minfo, codeList);
