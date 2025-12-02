@@ -239,10 +239,10 @@ public class Instrument implements ClassFileTransformer {
     }
 
     // Instrument the classfile, die on any errors.
-    JavaClass njc;
+    JavaClass newJavaClass;
     try {
       DCInstrument dci = new DCInstrument(c, in_jdk, loader);
-      njc = dci.instrument();
+      newJavaClass = dci.instrument();
     } catch (Throwable t) {
       System.err.printf("Error %s in transform of %s%n", t, binaryClassName);
       if (debug_transform.enabled) {
@@ -252,11 +252,11 @@ public class Instrument implements ClassFileTransformer {
       return null;
     }
 
-    if (njc != null) {
+    if (newJavaClass != null) {
       if (DynComp.dump) {
-        writeDebugClassFiles(njc, debug_instrumented_dir, binaryClassName);
+        writeDebugClassFiles(newJavaClass, debug_instrumented_dir, binaryClassName);
       }
-      return njc.getBytes();
+      return newJavaClass.getBytes();
     } else {
       debug_transform.log("Didn't instrument %s%n", binaryClassName);
       // No changes to the bytecodes.
