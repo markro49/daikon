@@ -686,8 +686,8 @@ public class DCInstrument extends InstructionListUtils {
               // and exit line numbers (information not available via reflection)
               // and add it to the list for this class.
               @SuppressWarnings("nullness:assignment") // the method exists
-              @NonNull MethodInfo mi = create_method_info(class_info, mgen);
-              class_info.method_infos.add(mi);
+              @NonNull MethodInfo mi = create_method_info(classInfo, mgen);
+              classInfo.method_infos.add(mi);
               DCRuntime.methods.add(mi);
 
               add_enter(mgen, mi, DCRuntime.methods.size() - 1);
