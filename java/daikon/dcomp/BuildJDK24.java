@@ -77,7 +77,7 @@ public final class BuildJDK24 {
   private static String static_field_id_filename = "dcomp_jdk_static_field_id";
 
   /** Allow BuildJDK24 to access outputDebugFiles. */
-  @SuppressWarnings("nullness:initialization.static.field.uninitialized")
+  @SuppressWarnings("nullness:initialization.static.field.uninitialized") // TODO
   private static daikon.dcomp.Instrument24 inst24;
 
   /**
@@ -121,7 +121,7 @@ public final class BuildJDK24 {
             "daikon.BuildJDK24 [options] dest_dir [classfiles...]",
             DynComp.class,
             DCInstrument24.class);
-    @NonNull String[] cl_args = options.parse(true, args);
+    String[] cl_args = options.parse(true, args);
     if (cl_args.length < 1) {
       System.err.println("must specify destination dir");
       options.printUsage();

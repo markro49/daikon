@@ -144,8 +144,6 @@ public class DCInstrument extends InstructionListUtils {
   protected boolean constructor_is_initialized;
 
   /** Local that stores the tag frame for the current method. */
-  protected @Nullable LocalVariableGen tag_frame_local;
-
   protected LocalVariableGen tagFrameLocal;
 
   // Type descriptors
@@ -1296,7 +1294,7 @@ public class DCInstrument extends InstructionListUtils {
    * the call to DCRuntime.enter (since it passed to that method).
    */
   @SuppressWarnings("nullness") // calls to side-effecting methods
-  @RequiresNonNull({"tag_frame_local", "stackMapTable"})
+  @RequiresNonNull({"tagFrameLocal", "stackMapTable"})
   @EnsuresNonNull("insertion_placeholder")
   public void add_create_tag_frame(MethodGen mgen) {
 
@@ -1453,7 +1451,7 @@ public class DCInstrument extends InstructionListUtils {
    * @return InstructionList for the enter or exit code
    */
   @SuppressWarnings("nullness") // calls to side-effecting methods
-  @RequiresNonNull("tag_frame_local")
+  @RequiresNonNull("tagFrameLocal")
   InstructionList callEnterOrExit(
       MethodGen mgen, int method_info_index, String enterOrExit, int line) {
 
@@ -3452,7 +3450,7 @@ public class DCInstrument extends InstructionListUtils {
    * @param inst return instruction to be replaced
    * @return the instruction list
    */
-  @RequiresNonNull("tag_frame_local")
+  @RequiresNonNull("tagFrameLocal")
   InstructionList return_tag(MethodGen mgen, Instruction inst) {
     Type type = mgen.getReturnType();
     InstructionList il = new InstructionList();

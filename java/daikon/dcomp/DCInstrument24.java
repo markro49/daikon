@@ -1803,8 +1803,8 @@ public class DCInstrument24 {
   }
 
   /**
-   * Generates the code to create the tag frame for this method and store it in tag_frame_local.
-   * This needs to be before the call to DCRuntime.enter (since it passed to that method).
+   * Generates the code to create the tag frame for this method and store it in tagFrameLocal. This
+   * needs to be before the call to DCRuntime.enter (since it passed to that method).
    *
    * @param mgen describes the given method
    * @return instruction list for tag_frame setup code
@@ -1842,7 +1842,7 @@ public class DCInstrument24 {
       // Character.forDigit (paramList.get(ii), Character.MAX_RADIX);
     }
 
-    // Create code to create and init the tag_frame and store the result in tag_frame_local.
+    // Create code to create and init the tag_frame and store the result in tagFrameLocal.
     List<CodeElement> instructions = new ArrayList<>();
 
     MethodRefEntry mre =
@@ -2747,7 +2747,7 @@ public class DCInstrument24 {
             System.out.printf("invoke host: %s%n", mgen.getClassName() + "." + mgen.getName());
           }
 
-          @NonNull @BinaryName String targetClassname = classname;
+          @BinaryName String targetClassname = classname;
           // Search this class for the target method. If not found, set targetClassname to
           // its superclass and try again.
           mainloop:
@@ -4163,17 +4163,13 @@ public class DCInstrument24 {
         continue;
       }
 
-      if (fm.flags().has(AccessFlag.STATIC)) {
-        @SuppressWarnings("nullness:unboxing.of.nullable")
-        int tagOffset = static_field_id.get(full_name(classModel, fm));
-        create_get_tag(classGen, fm, tagOffset);
-        create_set_tag(classGen, fm, tagOffset);
-      } else {
-        @SuppressWarnings("nullness:unboxing.of.nullable")
-        int tagOffset = field_to_offset_map.get(fm);
-        create_get_tag(classGen, fm, tagOffset);
-        create_set_tag(classGen, fm, tagOffset);
-      }
+      @SuppressWarnings("nullness:unboxing.of.nullable")
+      int tagOffset =
+          fm.flags().has(AccessFlag.STATIC)
+              ? static_field_id.get(full_name(classModel, fm))
+              : field_to_offset_map.get(fm);
+      create_get_tag(classGen, fm, tagOffset);
+      create_set_tag(classGen, fm, tagOffset);
     }
 
     // Build accessors for each field declared in a superclass that is
@@ -4196,17 +4192,13 @@ public class DCInstrument24 {
         }
 
         field_set.add(fm.fieldName().stringValue());
-        if (fm.flags().has(AccessFlag.STATIC)) {
-          @SuppressWarnings("nullness:unboxing.of.nullable")
-          int tagOffset = static_field_id.get(full_name(scm, fm));
-          create_get_tag(classGen, fm, tagOffset);
-          create_set_tag(classGen, fm, tagOffset);
-        } else {
-          @SuppressWarnings("nullness:unboxing.of.nullable")
-          int tagOffset = field_to_offset_map.get(fm);
-          create_get_tag(classGen, fm, tagOffset);
-          create_set_tag(classGen, fm, tagOffset);
-        }
+        @SuppressWarnings("nullness:unboxing.of.nullable")
+        int tagOffset =
+            fm.flags().has(AccessFlag.STATIC)
+                ? static_field_id.get(full_name(scm, fm))
+                : field_to_offset_map.get(fm);
+        create_get_tag(classGen, fm, tagOffset);
+        create_set_tag(classGen, fm, tagOffset);
       }
     }
   }
