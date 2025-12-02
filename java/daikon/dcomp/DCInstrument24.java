@@ -2893,8 +2893,7 @@ public class DCInstrument24 {
     }
 
     // When a class contains an existing <clinit>, it will be instrumented. Thus, we need to mark
-    // our
-    // added call to 'DCRuntime.set_class_initialized' as not instrumented.
+    // our added call to 'DCRuntime.set_class_initialized' as not instrumented.
     if (classname.endsWith("DCRuntime") && methodName.equals("set_class_initialized")) {
       return false;
     }
