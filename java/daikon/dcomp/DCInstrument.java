@@ -3717,8 +3717,6 @@ public class DCInstrument extends InstructionListUtils {
         continue;
       }
 
-      MethodGen get_method;
-      MethodGen set_method;
       int tagOffset =
           f.isStatic() ? static_field_id.get(full_name(orig_class, f)) : field_to_offset_map.get(f);
       classGen.addMethod(create_get_tag(classGen, f, tagOffset).getMethod());
