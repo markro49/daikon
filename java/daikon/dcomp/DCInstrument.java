@@ -3736,17 +3736,10 @@ public class DCInstrument extends InstructionListUtils {
 
       MethodGen get_method;
       MethodGen set_method;
-      if (f.isStatic()) {
-        int tagOffset = static_field_id.get(full_name(orig_class, f));
-        get_method = create_get_tag(classGen, f, tagOffset);
-        set_method = create_set_tag(classGen, f, tagOffset);
-      } else {
-        int tagOffset = field_to_offset_map.get(f);
-        get_method = create_get_tag(classGen, f, tagOffset);
-        set_method = create_set_tag(classGen, f, tagOffset);
-      }
-      classGen.addMethod(get_method.getMethod());
-      classGen.addMethod(set_method.getMethod());
+      int tagOffset =
+          f.isStatic() ? static_field_id.get(full_name(orig_class, f)) : field_to_offset_map.get(f);
+      classGen.addMethod(create_get_tag(classGen, f, tagOffset).getMethod());
+      classGen.addMethod(create_set_tag(classGen, f, tagOffset).getMethod());
     }
 
     // Build accessors for each field declared in a superclass that is
@@ -3770,19 +3763,12 @@ public class DCInstrument extends InstructionListUtils {
         }
 
         field_set.add(f.getName());
-        MethodGen get_method;
-        MethodGen set_method;
-        if (f.isStatic()) {
-          int tagOffset = static_field_id.get(full_name(super_class, f));
-          get_method = create_get_tag(classGen, f, tagOffset);
-          set_method = create_set_tag(classGen, f, tagOffset);
-        } else {
-          int tagOffset = field_to_offset_map.get(f);
-          get_method = create_get_tag(classGen, f, tagOffset);
-          set_method = create_set_tag(classGen, f, tagOffset);
-        }
-        classGen.addMethod(get_method.getMethod());
-        classGen.addMethod(set_method.getMethod());
+        int tagOffset =
+            f.isStatic()
+                ? static_field_id.get(full_name(super_class, f))
+                : field_to_offset_map.get(f);
+        classGen.addMethod(create_get_tag(classGen, f, tagOffset).getMethod());
+        classGen.addMethod(create_set_tag(classGen, f, tagOffset).getMethod());
       }
     }
   }
