@@ -96,7 +96,6 @@ import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
 import org.checkerframework.checker.nullness.qual.EnsuresNonNullIf;
 import org.checkerframework.checker.nullness.qual.KeyFor;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.checker.nullness.qual.RequiresNonNull;
 import org.checkerframework.checker.signature.qual.BinaryName;
@@ -675,6 +674,16 @@ public class DCInstrument extends InstructionListUtils {
             add_dcomp_arg(mgen);
           }
 
+          // Create a MethodInfo that describes this method's arguments
+          // and exit line numbers (information not available via reflection)
+          // and add it to the list for this class.
+          MethodInfo mi = null;
+          if (track && has_code) {
+            mi = create_method_info(classInfo, mgen);
+            classInfo.method_infos.add(mi);
+            DCRuntime.methods.add(mi);
+          }
+
           // Instrument the method
           if (has_code) {
             // Create the local to store the tag frame for this method
@@ -682,14 +691,6 @@ public class DCInstrument extends InstructionListUtils {
             build_exception_handler(mgen);
             instrumentMethod(mgen);
             if (track) {
-              // Create a MethodInfo that describes this method's arguments
-              // and exit line numbers (information not available via reflection)
-              // and add it to the list for this class.
-              @SuppressWarnings("nullness:assignment") // the method exists
-              @NonNull MethodInfo mi = create_method_info(classInfo, mgen);
-              classInfo.method_infos.add(mi);
-              DCRuntime.methods.add(mi);
-
               add_enter(mgen, mi, DCRuntime.methods.size() - 1);
               add_exit(mgen, mi, DCRuntime.methods.size() - 1);
             }
@@ -1236,10 +1237,10 @@ public class DCInstrument extends InstructionListUtils {
     }
 
     InstructionList cur_il = mgen.getInstructionList();
-    cur_il.setPositions();
     InstructionHandle start = global_exception_handler.getStartPC();
     InstructionHandle end = global_exception_handler.getEndPC();
     InstructionHandle exc = cur_il.append(global_catch_il);
+    cur_il.setPositions();
     mgen.addExceptionHandler(start, end, exc, throwable);
     // discard temporary handler
     global_catch_il = null;
