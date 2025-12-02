@@ -3722,7 +3722,7 @@ public class DCInstrument extends InstructionListUtils {
       int tagOffset =
           f.isStatic() ? static_field_id.get(full_name(orig_class, f)) : field_to_offset_map.get(f);
       classGen.addMethod(create_get_tag(classGen, f, tagOffset).getMethod());
-      classGen.addMethod(create_set_tag(classGen, f, tagOffset).set_method.getMethod());
+      classGen.addMethod(create_set_tag(classGen, f, tagOffset).getMethod());
     }
 
     // Build accessors for each field declared in a superclass that is
