@@ -2828,9 +2828,7 @@ public class DCInstrument24 {
             }
 
             // Recurse looking in the superclass.
-            @SuppressWarnings("nullness:assignment") // arg isn't Object => returns non-null
-            @NonNull String targetClassnameTmp = getSuperclassName(targetClassname);
-            targetClassname = targetClassnameTmp;
+            targetClassname = getSuperclassName(targetClassname);
           }
         }
       }
