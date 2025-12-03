@@ -239,12 +239,12 @@ public class DCInstrument24 {
 
   // Signature descriptors
 
-  // No arguments
+  // No parameters
 
-  /** Type array with no arguments. */
+  /** Type array with no parameters. */
   protected static final ClassDesc[] noArgsSig = new ClassDesc[0];
 
-  // One argument
+  // One parameter
 
   /** Type array with an int. */
   protected static ClassDesc[] intSig = {CD_int};
@@ -258,7 +258,7 @@ public class DCInstrument24 {
   /** Type array with an Object array. */
   protected static final ClassDesc[] objectArrayCD_arg = {objectArrayCD};
 
-  // Two arguments
+  // Two parameters
 
   /** Type array with a long and an int. */
   protected static ClassDesc[] longIntSig = {CD_long, CD_int};
@@ -378,12 +378,12 @@ public class DCInstrument24 {
     new MethodDef("wait", longIntSig),
   };
 
-  /** Represents a method (by its name and argument types). */
+  /** Represents a method (by its name and parameter types). */
   static class MethodDef {
     /** Name of this method. */
     String name;
 
-    /** Argument types for this method. */
+    /** Parameter types for this method. */
     ClassDesc[] arg_types;
 
     /**
@@ -573,7 +573,7 @@ public class DCInstrument24 {
       // cause JUnit to complain about multiple constructors and
       // methods that should have no arguments. To work around these
       // restrictions, we replace rather than duplicate each method
-      // we instrument and we do not add the dcomp marker argument.
+      // we instrument and we do not add the dcomp marker parameter.
       // We must also remember the class name so if we see a subsequent
       // call to one of its methods we do not add the dcomp argument.
 
@@ -964,7 +964,7 @@ public class DCInstrument24 {
 
         // main methods, <clinit> methods and all methods in a JUnit test class
         // need special treatment.  They are not duplicated and they do not have
-        // a DCompMarker added to their argument list.
+        // a DCompMarker added to their parameter list.
         boolean addingDcompArg = true;
 
         if (mgen.isClinit()) {
@@ -1230,8 +1230,8 @@ public class DCInstrument24 {
       // Create Java code that cleans up the tag stack and calls the real native method.
       fix_native(mgen);
 
-      // Add the DCompMarker argument to distinguish our version
-      add_dcomp_arg(mgen, minfo);
+      // Add the DCompMarker parameter to distinguish our version.
+      add_dcomp_param(mgen, minfo);
 
       // Copy the modified local variable table to the output class.
       debugInstrument.log("LocalVariableTable:%n");
@@ -1252,8 +1252,8 @@ public class DCInstrument24 {
     } else { // normal method
 
       if (!classInfo.isJunitTestClass) {
-        // Add the DCompMarker argument to distinguish our version
-        add_dcomp_arg(mgen, minfo);
+        // Add the DCompMarker parameter to distinguish our version.
+        add_dcomp_param(mgen, minfo);
       }
 
       if (debugInstrument.enabled) {
@@ -1270,13 +1270,13 @@ public class DCInstrument24 {
       int paramCount = (mgen.isStatic() ? 0 : 1) + mgen.getParameterTypes().length;
       debugInstrument.log("paramCount: %d%n", paramCount);
 
-      // Create a MethodInfo that describes this method's arguments
+      // Create a MethodInfo that describes this method's parameters
       // and exit line numbers (information not available via reflection)
       // and add it to the list for this class.
       MethodInfo mi = null;
       if (trackMethod && !in_jdk) {
         @SuppressWarnings("nullness:assignment") // the method exists
-        @NonNull MethodInfo miTmp = create_method_info(classInfo, mgen);
+        @NonNull MethodInfo miTmp = create_method_info_if_instrumented(classInfo, mgen);
         mi = miTmp;
         classInfo.method_infos.add(mi);
         DCRuntime.methods.add(mi);
@@ -1864,13 +1864,13 @@ public class DCInstrument24 {
 
   /**
    * Pushes the object, method info index, parameters, and return value on the stack and calls the
-   * specified Method (normally enter or exit) in DCRuntime. The parameters are passed as an array
-   * of objects.
+   * specified method (normally {@code enter()} or {@code exit}) in DCRuntime. The parameters are
+   * passed as an array of objects.
    *
    * @param mgen method to modify
    * @param minfo for the given method's code
    * @param method_info_index index for MethodInfo
-   * @param methodToCall "enter" or "exit"
+   * @param enterOrExit the method to invoke: "enter" or "exit"
    * @param line source line number if type is exit
    * @return instruction list for the enter or exit code
    */
@@ -1878,7 +1878,7 @@ public class DCInstrument24 {
       MethodGen24 mgen,
       MethodGen24.MInfo24 minfo,
       int method_info_index,
-      String methodToCall,
+      String enterOrExit,
       int line) {
 
     List<CodeElement> instructions = new ArrayList<>();
@@ -1888,7 +1888,7 @@ public class DCInstrument24 {
     instructions.add(LoadInstruction.of(TypeKind.REFERENCE, tagFrameLocal.slot()));
 
     // Push the object.  Push null if this is a static method or a constructor.
-    if (mgen.isStatic() || (methodToCall.equals("enter") && mgen.isConstructor())) {
+    if (mgen.isStatic() || (enterOrExit.equals("enter") && mgen.isConstructor())) {
       instructions.add(ConstantInstruction.ofIntrinsic(Opcode.ACONST_NULL));
     } else { // must be an instance method
       instructions.add(LoadInstruction.of(TypeKind.REFERENCE, 0));
@@ -1904,7 +1904,7 @@ public class DCInstrument24 {
     instructions.add(loadIntegerConstant(paramTypes.length));
     instructions.add(NewReferenceArrayInstruction.of(poolBuilder.classEntry(CD_Object)));
 
-    // Put each parameter into the array.
+    // Put each argument into the array.
     int param_index = param_offset;
     for (int ii = 0; ii < paramTypes.length; ii++) {
       instructions.add(StackInstruction.of(Opcode.DUP));
@@ -1922,7 +1922,7 @@ public class DCInstrument24 {
     // If this is an exit, push the return value and line number.
     // The return value is stored in the local "return__$trace2_val".
     // If the return value is a primitive, push a null.
-    if (methodToCall.equals("exit")) {
+    if (enterOrExit.equals("exit")) {
       ClassDesc returnType = mgen.getReturnType();
       if (returnType.equals(CD_void)) {
         instructions.add(ConstantInstruction.ofIntrinsic(Opcode.ACONST_NULL));
@@ -1940,21 +1940,21 @@ public class DCInstrument24 {
 
     MethodTypeDesc methodArgs;
     // Call the specified method.
-    if (methodToCall.equals("exit")) {
+    if (enterOrExit.equals("exit")) {
       methodArgs =
           MethodTypeDesc.of(
               CD_void, objectArrayCD, CD_Object, CD_int, objectArrayCD, CD_Object, CD_int);
     } else {
       methodArgs = MethodTypeDesc.of(CD_void, objectArrayCD, CD_Object, CD_int, objectArrayCD);
     }
-    MethodRefEntry mre = poolBuilder.methodRefEntry(runtimeCD, methodToCall, methodArgs);
+    MethodRefEntry mre = poolBuilder.methodRefEntry(runtimeCD, enterOrExit, methodArgs);
     instructions.add(InvokeInstruction.of(Opcode.INVOKESTATIC, mre));
 
     return instructions;
   }
 
   /**
-   * Transforms on instruction to track comparability. Returns a list of instructions that replaces
+   * Transforms one instruction to track comparability. Returns a list of instructions that replaces
    * the specified instruction. Returns null if the instruction should not be replaced.
    *
    * @param mgen method to modify
@@ -2428,8 +2428,8 @@ public class DCInstrument24 {
   }
 
   /**
-   * Return the interface class containing the implementation of the given method. The interfaces of
-   * {@code startClass} are recursively searched.
+   * Returns the interface class containing the implementation of the given method. The interfaces
+   * of {@code startClass} are recursively searched.
    *
    * @param startClass the ClassModel whose interfaces are to be searched
    * @param methodName the target method to search for
@@ -2509,8 +2509,8 @@ public class DCInstrument24 {
    *   <li>otherwise, determine whether the target of the invoke is instrumented or not (this is the
    *       {@code callee_instrumented} variable)
    *       <ul>
-   *         <li>If the target method is instrumented, add a DCompMarker argument to the end of the
-   *             argument list.
+   *         <li>If the target method is instrumented, add a DCompMarker parameter to the end of the
+   *             parameter list.
    *         <li>If the target method is not instrumented, we must account for the fact that the
    *             instrumentation code generated up to this point has assumed that the target method
    *             is instrumented. Hence, generate code to discard a primitive tag from the
@@ -2578,12 +2578,12 @@ public class DCInstrument24 {
       // Push the DCompMarker argument as we are calling the instrumented version.
       il.add(ConstantInstruction.ofIntrinsic(Opcode.ACONST_NULL));
 
-      // Add the DCompMarker to the arg types list.
-      List<ClassDesc> new_arg_types = new ArrayList<>(Arrays.asList(paramTypes));
-      new_arg_types.add(dcomp_marker);
+      // Add the DCompMarker type to the parameter types list.
+      List<ClassDesc> new_param_types = new ArrayList<>(Arrays.asList(paramTypes));
+      new_param_types.add(dcomp_marker);
 
       NameAndTypeEntry nte =
-          poolBuilder.nameAndTypeEntry(methodName, MethodTypeDesc.of(returnType, new_arg_types));
+          poolBuilder.nameAndTypeEntry(methodName, MethodTypeDesc.of(returnType, new_param_types));
       il.add(InvokeInstruction.of(invoke.opcode(), invoke.owner(), nte, invoke.isInterface()));
       return il;
 
@@ -2607,7 +2607,7 @@ public class DCInstrument24 {
     List<CodeElement> il = new ArrayList<>();
 
     // JUnit test classes are a bit strange.  They are marked as not being callee_instrumented
-    // because they do not have the dcomp_marker added to the argument list, but
+    // because they do not have the dcomp_marker added to the parameter list, but
     // they actually contain instrumentation code.  So we do not want to discard
     // the primitive tags prior to the call.
     if (!junitTestClasses.contains(classname)) {
@@ -2627,7 +2627,7 @@ public class DCInstrument24 {
 
   /**
    * Returns instructions that will discard any primitive tags corresponding to the specified
-   * parameters. Returns an empty instruction list if there are no primitive parameters to discard.
+   * parameters. Returns an empty instruction list if there are no primitive arguments to discard.
    *
    * @param paramTypes parameter types of target method
    * @return an instruction list that discards primitive tags from DCRuntime's per-thread
@@ -2826,6 +2826,7 @@ public class DCInstrument24 {
               targetInstrumented = false;
               break;
             }
+
             // Recurse looking in the superclass.
             targetClassname = getSuperclassName(targetClassname);
           }
@@ -2980,9 +2981,9 @@ public class DCInstrument24 {
   }
 
   /**
-   * Return a list of the superclasses of this class. This class itself is not in the list. The is
-   * in ascending order; that is, java.lang.Object is always the last element, unless the argument
-   * is java.lang.Object.
+   * Return a list of the superclasses of this class. This class itself is not in the list. The
+   * returned list is in ascending order; that is, java.lang.Object is always the last element,
+   * unless the argument is java.lang.Object.
    *
    * @return list of super classes
    */
@@ -3369,13 +3370,14 @@ public class DCInstrument24 {
    * @param mgen method to inspect
    * @return MethodInfo for the method
    */
-  private @Nullable MethodInfo create_method_info(ClassInfo classInfo, MethodGen24 mgen) {
+  private @Nullable MethodInfo create_method_info_if_instrumented(
+      ClassInfo classInfo, MethodGen24 mgen) {
 
     // Get the parameter names for this method
     String[] paramNames = mgen.getParameterNames();
 
     if (debugInstrument.enabled) {
-      debugInstrument.log("create_method_info: %s%n", paramNames.length);
+      debugInstrument.log("create_method_info_if_instrumented: %s%n", paramNames.length);
       for (String paramName : paramNames) {
         debugInstrument.log("param name: %s%n", paramName);
       }
@@ -4630,12 +4632,12 @@ public class DCInstrument24 {
   }
 
   /**
-   * Add a dcomp marker argument to indicate this is the instrumented version of the method.
+   * Add a dcomp marker parameter to indicate this is the instrumented version of the method.
    *
    * @param mgen method to add dcomp marker to
    * @param minfo for the given method's code
    */
-  void add_dcomp_arg(MethodGen24 mgen, MethodGen24.MInfo24 minfo) {
+  void add_dcomp_param(MethodGen24 mgen, MethodGen24.MInfo24 minfo) {
 
     // Don't modify main or the JVM won't be able to find it.
     if (mgen.isMain()) {
@@ -4647,7 +4649,7 @@ public class DCInstrument24 {
       return;
     }
 
-    // Add the dcomp marker argument to indicate this is the
+    // Add the dcomp marker parameter to indicate this is the
     // instrumented version of the method.
     StackMapUtils24.addNewSpecialLocal(mgen, minfo, "marker", dcomp_marker, true);
   }
@@ -4691,7 +4693,7 @@ public class DCInstrument24 {
   }
 
   /**
-   * Creates a pseudo "main" method with a DcompMarker argument that does nothing but call the
+   * Creates a pseudo "main" method with a DcompMarker parameter that does nothing but call the
    * original "main" method without the DCompMarker argument.
    *
    * @param mgen describes the "main" method
