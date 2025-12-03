@@ -693,16 +693,22 @@ public class DCInstrument extends InstructionListUtils {
             assert stackMapTable != null
                 : "@AssumeAssertion(nullness): checked above and not modified since";
             assert insertion_placeholder != null : "@AssumeAssertion(nullness): ??";
+            assert tagFrameLocal != null
+                : "@AssumeAssertion(nullness) set above and not modified by"
+                    + " build_exception_handler";
             instrumentMethod(mgen);
             if (track) {
               assert mi != null : "@AssumeAssertion(nullness): track == true => mi != null";
+              assert tagFrameLocal != null
+                  : "@AssumeAssertion(nullness) set above and not modified by"
+                      + " build_exception_handler";
               add_enter(mgen, mi, DCRuntime.methods.size() - 1);
               assert tagFrameLocal != null : "@AssumeAssertion(nullness): ??";
               add_exit(mgen, mi, DCRuntime.methods.size() - 1);
             }
             assert global_exception_handler != null
                 : "@AssumeAssertion(nullness): set by build_exception_handler, then preserved";
-            assert stackMapTable != null
+            assert this.stackMapTable != null
                 : "@AssumeAssertion(nullness): checked above and not modified since";
             install_exception_handler(mgen);
           }
@@ -988,7 +994,12 @@ public class DCInstrument extends InstructionListUtils {
             build_exception_handler(mgen);
             assert insertion_placeholder != null : "@AssumeAssertion(nullness): ??";
             assert stackMapTable != null : "@AssumeAssertion(nullness): ??";
+            assert tagFrameLocal != null
+                : "@AssumeAssertion(nullness): set above and not modified by"
+                    + " build_exception_handler";
             instrumentMethod(mgen);
+            assert global_exception_handler != null : "@AssumeAssertion(nullness): ??";
+            assert stackMapTable != null : "@AssumeAssertion(nullness): ??";
             install_exception_handler(mgen);
           }
         }
