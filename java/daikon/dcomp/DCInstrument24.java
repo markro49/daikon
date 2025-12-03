@@ -165,20 +165,24 @@ public class DCInstrument24 {
 
   // Variables used for calculating the state of the operand stack.
 
+  // TODO: The following four variables are redefined for each method instrumented.
+  // Rather than being global variables, they should be wrapped in a data structure that is passed
+  // to the places that need it.
+
   /** Mapping from a label to its index in the method's codeList. */
-  @SuppressWarnings("nullness:initialization.static.field.uninitialized") // what's the lifecyle?
+  @SuppressWarnings("nullness:initialization.static.field.uninitialized") // TODO: method-local
   protected static Map<Label, Integer> labelIndexMap;
 
   /** Mapping from a label to its operand stack. */
-  @SuppressWarnings("nullness:initialization.static.field.uninitialized") // what's the lifecyle?
+  @SuppressWarnings("nullness:initialization.static.field.uninitialized") // TODO: method-local
   protected static Map<Label, OperandStack24> worklistHistory;
 
   /** State of operand stack prior to each byte code instruction. */
-  @SuppressWarnings("nullness:initialization.static.field.uninitialized") // what's the lifecyle?
+  @SuppressWarnings("nullness:initialization.static.field.uninitialized") // TODO: method-local
   protected static OperandStack24[] stacks;
 
   /** The type of each local variable. */
-  @SuppressWarnings("nullness:initialization.static.field.uninitialized") // what's the lifecyle?
+  @SuppressWarnings("nullness:initialization.static.field.uninitialized") // TODO: method-local
   protected static ClassDesc[] locals;
 
   /** Record containing a work item for the operand stack calculation. */
