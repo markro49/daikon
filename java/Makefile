@@ -2130,9 +2130,10 @@ endif
 ### Diffs
 ###
 
-# Don't diff BcelUtils24.java, ClassGen24.java, MethodGen24.java, or
+# Don't diff StackMapUtils24.java, ClassGen24.java, MethodGen24.java, or
 # OperandStack24.java, because there are too many differences between the
 # upstream version (in BCEL or in bcel-util) and the version in Daikon.
+.PHONY: diff24
 diff24:
 	-diff -u daikon/dcomp/Instrument.java daikon/dcomp/Instrument24.java
 	-diff -u daikon/dcomp/DCInstrument.java daikon/dcomp/DCInstrument24.java
