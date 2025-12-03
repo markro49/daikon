@@ -3002,18 +3002,30 @@ public class DCInstrument24 {
   /**
    * Given a classname return its superclass name. Note that we copy BCEL and report that the
    * superclass of {@code java.lang.Object} is {@code java.lang.Object} rather than saying there is
-   * no superclass. We are assured this will not cause a problem because we never call this method
-   * with {@code java.lang.Object} as the argument.
+   * no superclass.
    *
    * @param classname the fully-qualified name of the class in binary form. E.g., "java.util.List"
-   * @return name of superclass, or null if there is an error
+   * @return name of superclass
    */
-  private @Nullable @BinaryName String getSuperclassName(String classname) {
+  private @BinaryName String getSuperclassName(String classname) {
     ClassModel cm = getClassModel(classname);
-    if (cm != null) {
-      return ClassGen24.getSuperclassName(cm);
-    } else {
-      return null;
+    if (cm == null) {
+      throw new SuperclassNameError(classname);
+    }
+    return ClassGen24.getSuperclassName(cm);
+  }
+
+  /** Unchecked exception thrown if {@link #getSuperclassName} cannot find a superclass name. */
+  private static class SuperclassNameError extends Error {
+    static final long serialVersionUID = 20251203;
+
+    /**
+     * Creates a SuperclassNameError.
+     *
+     * @param classname the name of the class whose parent cannot be found
+     */
+    SuperclassNameError(String classname) {
+      super(classname);
     }
   }
 
@@ -3576,19 +3588,18 @@ public class DCInstrument24 {
   boolean should_track(
       @BinaryName String className, @Identifier String methodName, String pptName) {
 
-    debugInstrument.log(
-        "Considering tracking (24) ppt: %s, %s, %s%n", className, methodName, pptName);
+    debugInstrument.log("Considering tracking ppt: %s, %s, %s%n", className, methodName, pptName);
 
     // Don't track any JDK classes
     if (BcelUtil.inJdk(className)) {
-      debug_transform.log("ignoring %s, is a JDK class%n", className);
+      debug_transform.log("not including %s as it is a JDK class%n", className);
       return false;
     }
 
     // Don't track toString methods because we call them in
     // our debug statements.
     if (pptName.contains("toString")) {
-      debug_transform.log("ignoring %s, is a toString method%n", pptName);
+      debug_transform.log("not including %s as it is a toString method%n", pptName);
       return false;
     }
 
