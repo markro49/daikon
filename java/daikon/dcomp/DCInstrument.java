@@ -111,7 +111,6 @@ import org.checkerframework.dataflow.qual.Pure;
  * into the DynComp Runtime to calculate comparability values. These added calls are sometimes
  * referred to as "hooks".
  */
-@SuppressWarnings("nullness") // todo
 public class DCInstrument extends InstructionListUtils {
 
   /**

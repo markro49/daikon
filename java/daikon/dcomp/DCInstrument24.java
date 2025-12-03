@@ -133,7 +133,6 @@ import org.checkerframework.dataflow.qual.Pure;
  * Instrument.java using BCEL, as we anticipate our clients using JDK 21 or less for quite some
  * time.)
  */
-@SuppressWarnings("nullness")
 public class DCInstrument24 {
 
   /** A log to which to print debugging information about program instrumentation. */
