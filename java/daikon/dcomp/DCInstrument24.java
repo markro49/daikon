@@ -110,6 +110,7 @@ import org.checkerframework.checker.nullness.qual.KeyFor;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.checkerframework.checker.nullness.qual.RequiresNonNull;
 import org.checkerframework.checker.signature.qual.BinaryName;
 import org.checkerframework.checker.signature.qual.ClassGetName;
 import org.checkerframework.checker.signature.qual.DotSeparatedIdentifiers;
@@ -165,16 +166,24 @@ public class DCInstrument24 {
 
   // Variables used for calculating the state of the operand stack.
 
+  // TODO: The following four variables are redefined for each method instrumented.
+  // Rather than being global variables, they should be wrapped in a data structure that is passed
+  // to the places that need it.
+
   /** Mapping from a label to its index in the method's codeList. */
+  @SuppressWarnings("nullness:initialization.static.field.uninitialized") // TODO: method-local
   protected static Map<Label, Integer> labelIndexMap;
 
   /** Mapping from a label to its operand stack. */
+  @SuppressWarnings("nullness:initialization.static.field.uninitialized") // TODO: method-local
   protected static Map<Label, OperandStack24> worklistHistory;
 
   /** State of operand stack prior to each byte code instruction. */
+  @SuppressWarnings("nullness:initialization.static.field.uninitialized") // TODO: method-local
   protected static OperandStack24[] stacks;
 
   /** The type of each local variable. */
+  @SuppressWarnings("nullness:initialization.static.field.uninitialized") // TODO: method-local
   protected static ClassDesc[] locals;
 
   /** Record containing a work item for the operand stack calculation. */
@@ -720,7 +729,7 @@ public class DCInstrument24 {
 
     // Have all top-level classes implement the DCompInstrumented interface.
     if (classGen.getSuperclassName().equals("java.lang.Object")) {
-      @SuppressWarnings("signature:assignment")
+      @SuppressWarnings("signature:assignment") // CF needs regex for @MethodDescriptor
       @MethodDescriptor String objectToBoolean = "(Ljava/lang/Object;)Z";
       // Add equals method if it doesn't already exist. This ensures
       // that an instrumented version, equals(Object, DCompMarker),
@@ -1062,7 +1071,9 @@ public class DCInstrument24 {
    * @param newLocals method scope locals to define; may be null if none
    */
   private void copyCode(
-      CodeBuilder codeBuilder, List<CodeElement> instructions, List<myLocalVariable> newLocals) {
+      CodeBuilder codeBuilder,
+      List<CodeElement> instructions,
+      @Nullable List<myLocalVariable> newLocals) {
 
     if (newLocals != null) {
       for (myLocalVariable lv : newLocals) {
@@ -1169,8 +1180,8 @@ public class DCInstrument24 {
    */
   private void instrumentCode(
       CodeBuilder codeBuilder,
-      CodeModel codeModel,
-      List<myLocalVariable> newLocals,
+      @Nullable CodeModel codeModel,
+      @Nullable List<myLocalVariable> newLocals,
       MethodGen24 mgen,
       ClassInfo classInfo,
       boolean trackMethod) {
@@ -1265,7 +1276,9 @@ public class DCInstrument24 {
       // and add it to the list for this class.
       MethodInfo mi = null;
       if (trackMethod && !in_jdk) {
-        mi = create_method_info(classInfo, mgen);
+        @SuppressWarnings("nullness:assignment") // the method exists
+        @NonNull MethodInfo miTmp = create_method_info(classInfo, mgen);
+        mi = miTmp;
         classInfo.method_infos.add(mi);
         DCRuntime.methods.add(mi);
       }
@@ -1318,6 +1331,7 @@ public class DCInstrument24 {
       instrumentCodeList(codeModel, mgen, minfo, codeList);
 
       if (trackMethod && !in_jdk) {
+        assert mi != null : "@AssumeAssertion(nullness): mi was assigned under same conditions";
         add_enter(mgen, minfo, codeList, DCRuntime.methods.size() - 1);
         add_exit(mgen, mi, minfo, codeList, DCRuntime.methods.size() - 1);
       }
@@ -1480,8 +1494,9 @@ public class DCInstrument24 {
    * @param minfo for the given method's code
    * @param instructions instruction list for method
    */
+  @RequiresNonNull("newStartLabel")
   private void instrumentCodeList(
-      CodeModel codeModel,
+      @Nullable CodeModel codeModel,
       MethodGen24 mgen,
       MethodGen24.MInfo24 minfo,
       List<CodeElement> instructions) {
@@ -1666,7 +1681,9 @@ public class DCInstrument24 {
             "push to worklist: " + target + ", " + labelIndexMap.get(target) + ", stack: " + stack);
       }
       worklistHistory.put(target, stack.getClone());
-      worklist.add(new WorkItem(labelIndexMap.get(target), stack.getClone()));
+      @SuppressWarnings("nullness:unboxing.of.nullable")
+      int indexInCodeList = labelIndexMap.get(target);
+      worklist.add(new WorkItem(indexInCodeList, stack.getClone()));
     } else {
       // will throw if stacks don't match
       verifyOperandStackMatches(target, existing, stack);
@@ -1735,7 +1752,7 @@ public class DCInstrument24 {
    * @param mgen method to add exception handler
    * @return code list for handler, or null if method should not have a handler
    */
-  public List<CodeElement> build_exception_handler(MethodGen24 mgen) {
+  public @Nullable List<CodeElement> build_exception_handler(MethodGen24 mgen) {
 
     if (mgen.getName().equals("main")) {
       return null;
@@ -2433,7 +2450,9 @@ public class DCInstrument24 {
       }
       ClassModel cm;
       try {
-        cm = getClassModel(interfaceName);
+        @SuppressWarnings("nullness:assignment")
+        @NonNull ClassModel cmTmp = getClassModel(interfaceName);
+        cm = cmTmp;
       } catch (Throwable t) {
         throw new DynCompError(String.format("Unable to load class: %s", interfaceName), t);
       }
@@ -2987,7 +3006,7 @@ public class DCInstrument24 {
    * @param classname the fully-qualified name of the class in binary form. E.g., "java.util.List"
    * @return name of superclass, or null if there is an error
    */
-  private @BinaryName String getSuperclassName(String classname) {
+  private @Nullable @BinaryName String getSuperclassName(String classname) {
     ClassModel cm = getClassModel(classname);
     if (cm != null) {
       return ClassGen24.getSuperclassName(cm);
@@ -3139,7 +3158,7 @@ public class DCInstrument24 {
    * @param fi the field instruction
    * @return instruction list to access the field
    */
-  private List<CodeElement> load_store_field(
+  private @Nullable List<CodeElement> load_store_field(
       MethodGen24 mgen, MethodGen24.MInfo24 minfo, FieldInstruction fi) {
 
     ClassDesc field_type = fi.typeSymbol();
@@ -3618,7 +3637,7 @@ public class DCInstrument24 {
    * @param tag_count number of tags to discard
    * @return instruction list to discard tag(s)
    */
-  List<CodeElement> discard_tag_code(CodeElement inst, int tag_count) {
+  List<CodeElement> discard_tag_code(@Nullable CodeElement inst, int tag_count) {
     List<CodeElement> il = new ArrayList<>();
     il.add(loadIntegerConstant(tag_count));
     il.add(dcr_call("discard_tag", CD_void, intSig));
@@ -3632,7 +3651,7 @@ public class DCInstrument24 {
    * Duplicates a category 1 item on the top of stack. If it is a primitive, we need to do the same
    * to the tag stack. Otherwise, we do nothing.
    */
-  List<CodeElement> dup_tag(CodeElement inst, OperandStack24 stack) {
+  @Nullable List<CodeElement> dup_tag(CodeElement inst, OperandStack24 stack) {
     ClassDesc top = stack.peek();
     if (debug_dup.enabled) {
       debug_dup.log("DUP -> %s [... %s]%n", "dup", stack_contents(stack, 2));
@@ -3649,7 +3668,7 @@ public class DCInstrument24 {
    * value is not a primitive, then we need only to insert the duped value down 1 on the tag stack
    * (which contains only primitives).
    */
-  List<CodeElement> dup_x1_tag(CodeElement inst, OperandStack24 stack) {
+  @Nullable List<CodeElement> dup_x1_tag(CodeElement inst, OperandStack24 stack) {
     ClassDesc top = stack.peek();
     String op;
     if (!top.isPrimitive()) {
@@ -3669,7 +3688,7 @@ public class DCInstrument24 {
    * Dup the category 1 value on the top of the stack and insert it either two or three values down
    * on the stack.
    */
-  List<CodeElement> dup_x2_tag(CodeElement inst, OperandStack24 stack) {
+  @Nullable List<CodeElement> dup_x2_tag(CodeElement inst, OperandStack24 stack) {
     ClassDesc value1 = stack.peek();
     if (!value1.isPrimitive()) {
       return null;
@@ -3698,7 +3717,7 @@ public class DCInstrument24 {
    * Duplicate either one category 2 value or two category 1 values. If the value(s) are primitives
    * we need to do the same to the tag stack. Otherwise, we do nothing.
    */
-  List<CodeElement> dup2_tag(CodeElement inst, OperandStack24 stack) {
+  @Nullable List<CodeElement> dup2_tag(CodeElement inst, OperandStack24 stack) {
     ClassDesc top = stack.peek();
     String op;
     if (is_category2(top)) {
@@ -3721,7 +3740,7 @@ public class DCInstrument24 {
    * Duplicates either the top 2 category 1 values or a single category 2 value and inserts it 2 or
    * 3 values down on the stack.
    */
-  List<CodeElement> dup2_x1_tag(CodeElement inst, OperandStack24 stack) {
+  @Nullable List<CodeElement> dup2_x1_tag(CodeElement inst, OperandStack24 stack) {
     ClassDesc value1 = stack.peek();
     ClassDesc value2 = stack.peek(1);
     String op;
@@ -3763,7 +3782,7 @@ public class DCInstrument24 {
   /**
    * Duplicate the top one or two operand stack values and insert two, three, or four values down.
    */
-  List<CodeElement> dup2_x2_tag(CodeElement inst, OperandStack24 stack) {
+  @Nullable List<CodeElement> dup2_x2_tag(CodeElement inst, OperandStack24 stack) {
     ClassDesc value1 = stack.peek();
     ClassDesc value2 = stack.peek(1);
     String op;
@@ -3849,7 +3868,7 @@ public class DCInstrument24 {
    * Pops a category 1 value from the top of the stack. We want to discard the top of the tag stack
    * iff the item on the top of the stack is a primitive.
    */
-  List<CodeElement> pop_tag(CodeElement inst, OperandStack24 stack) {
+  @Nullable List<CodeElement> pop_tag(CodeElement inst, OperandStack24 stack) {
     ClassDesc top = stack.peek();
     if (debug_dup.enabled) {
       debug_dup.log("POP -> %s [... %s]%n", "pop", stack_contents(stack, 1));
@@ -3864,7 +3883,7 @@ public class DCInstrument24 {
    * Pops either the top 2 category 1 values or a single category 2 value from the top of the stack.
    * We must do the same to the tag stack if the values are primitives.
    */
-  List<CodeElement> pop2_tag(CodeElement inst, OperandStack24 stack) {
+  @Nullable List<CodeElement> pop2_tag(CodeElement inst, OperandStack24 stack) {
     ClassDesc top = stack.peek();
     if (debug_dup.enabled) {
       debug_dup.log("POP2 -> %s [... %s]%n", "pop2", stack_contents(stack, 1));
@@ -3890,7 +3909,7 @@ public class DCInstrument24 {
    * Swaps the two category 1 values on the top of the stack. We need to swap the top of the tag
    * stack if the two top elements on the real stack are primitives.
    */
-  List<CodeElement> swap_tag(CodeElement inst, OperandStack24 stack) {
+  @Nullable List<CodeElement> swap_tag(CodeElement inst, OperandStack24 stack) {
     ClassDesc type1 = stack.peek();
     ClassDesc type2 = stack.peek(1);
     if (debug_dup.enabled) {
@@ -4772,6 +4791,7 @@ public class DCInstrument24 {
    * @param inst the instruction to check
    * @return the original instruction or its replacement
    */
+  @RequiresNonNull("newStartLabel")
   private CodeElement retargetStartLabel(CodeElement inst) {
     ModifiedSwitchInfo info;
     switch (inst) {
@@ -4812,6 +4832,7 @@ public class DCInstrument24 {
    * @param caseList the case list for the switch instruction
    * @return a ModifiedSwitchInfo with the changed values, or null if no changes
    */
+  @RequiresNonNull("newStartLabel")
   private @Nullable ModifiedSwitchInfo retargetStartLabel(
       Label defaultTarget, List<SwitchCase> caseList) {
     Label modifiedTarget;
