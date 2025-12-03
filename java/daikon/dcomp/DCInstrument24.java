@@ -2748,7 +2748,7 @@ public class DCInstrument24 {
             System.out.printf("invoke host: %s%n", mgen.getClassName() + "." + mgen.getName());
           }
 
-          @NonNull @BinaryName String targetClassname = classname;
+          @BinaryName String targetClassname = classname;
           // Search this class for the target method. If not found, set targetClassname to
           // its superclass and try again.
           mainloop:
