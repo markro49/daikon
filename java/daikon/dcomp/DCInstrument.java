@@ -2792,12 +2792,13 @@ public class DCInstrument extends InstructionListUtils {
     if (return_local == null) {
       assert (return_type != null) : " return__$trace2_val doesn't exist";
     } else {
-      assert return_type.equals(return_local.getType())
+      assert return_type != null && return_type.equals(return_local.getType())
           : " return_type = " + return_type + "; current type = " + return_local.getType();
     }
 
     if (return_local == null) {
       // log ("Adding return local of type %s%n", return_type);
+      assert return_type != null : "@AssumeAssertion(nullness)";
       return_local = mgen.addLocalVariable("return__$trace2_val", return_type, null, null);
     }
 
@@ -3733,18 +3734,10 @@ public class DCInstrument extends InstructionListUtils {
         continue;
       }
 
-      MethodGen get_method;
-      MethodGen set_method;
-      if (f.isStatic()) {
-        String full_name = full_name(orig_class, f);
-        get_method = create_get_tag(classGen, f, static_field_id.get(full_name));
-        set_method = create_set_tag(classGen, f, static_field_id.get(full_name));
-      } else {
-        get_method = create_get_tag(classGen, f, field_to_offset_map.get(f));
-        set_method = create_set_tag(classGen, f, field_to_offset_map.get(f));
-      }
-      classGen.addMethod(get_method.getMethod());
-      classGen.addMethod(set_method.getMethod());
+      int tagOffset =
+          f.isStatic() ? static_field_id.get(full_name(orig_class, f)) : field_to_offset_map.get(f);
+      classGen.addMethod(create_get_tag(classGen, f, tagOffset).getMethod());
+      classGen.addMethod(create_set_tag(classGen, f, tagOffset).getMethod());
     }
 
     // Build accessors for each field declared in a superclass that is
@@ -3768,18 +3761,12 @@ public class DCInstrument extends InstructionListUtils {
         }
 
         field_set.add(f.getName());
-        MethodGen get_method;
-        MethodGen set_method;
-        if (f.isStatic()) {
-          String full_name = full_name(super_class, f);
-          get_method = create_get_tag(classGen, f, static_field_id.get(full_name));
-          set_method = create_set_tag(classGen, f, static_field_id.get(full_name));
-        } else {
-          get_method = create_get_tag(classGen, f, field_to_offset_map.get(f));
-          set_method = create_set_tag(classGen, f, field_to_offset_map.get(f));
-        }
-        classGen.addMethod(get_method.getMethod());
-        classGen.addMethod(set_method.getMethod());
+        int tagOffset =
+            f.isStatic()
+                ? static_field_id.get(full_name(super_class, f))
+                : field_to_offset_map.get(f);
+        classGen.addMethod(create_get_tag(classGen, f, tagOffset).getMethod());
+        classGen.addMethod(create_set_tag(classGen, f, tagOffset).getMethod());
       }
     }
   }
@@ -4238,7 +4225,7 @@ public class DCInstrument extends InstructionListUtils {
    */
   static void save_static_field_id(File file) throws IOException {
 
-    PrintStream ps = new PrintStream(file, "UTF-8"); // in Java 9+, use: StandardCharsets.UTF_8
+    PrintStream ps = new PrintStream(file, "UTF-8"); // in Java 10+, use: StandardCharsets.UTF_8
     for (Map.Entry<@KeyFor("static_field_id") String, Integer> entry : static_field_id.entrySet()) {
       ps.printf("%s  %d%n", entry.getKey(), entry.getValue());
     }

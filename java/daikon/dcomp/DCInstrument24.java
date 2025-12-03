@@ -138,7 +138,7 @@ public class DCInstrument24 {
   /** A log to which to print debugging information about program instrumentation. */
   protected SimpleLog debugInstrument = new SimpleLog(false);
 
-  /** Debug flag for BcelUtils24. */
+  /** Debug flag for StackMapUtils24. */
   public static boolean bcelDebug;
 
   /**
@@ -1787,12 +1787,13 @@ public class DCInstrument24 {
    * @return LocalVariable for the tag_frame local
    */
   LocalVariable createTagFrameLocal(MethodGen24 mgen, MethodGen24.MInfo24 minfo) {
-    return BcelUtils24.addNewSpecialLocal(mgen, minfo, "dcomp_tag_frame$5a", objectArrayCD, false);
+    return StackMapUtils24.addNewSpecialLocal(
+        mgen, minfo, "dcomp_tag_frame$5a", objectArrayCD, false);
   }
 
   /**
-   * Generates the code to create the tag frame for this method and store it in tag_frame_local.
-   * This needs to be before the call to DCRuntime.enter (since it passed to that method).
+   * Generates the code to create the tag frame for this method and store it in tagFrameLocal. This
+   * needs to be before the call to DCRuntime.enter (since it passed to that method).
    *
    * @param mgen describes the given method
    * @return instruction list for tag_frame setup code
@@ -1830,7 +1831,7 @@ public class DCInstrument24 {
       // Character.forDigit (paramList.get(ii), Character.MAX_RADIX);
     }
 
-    // Create code to create and init the tag_frame and store the result in tag_frame_local.
+    // Create code to create and init the tag_frame and store the result in tagFrameLocal.
     List<CodeElement> instructions = new ArrayList<>();
 
     MethodRefEntry mre =
@@ -4147,14 +4148,13 @@ public class DCInstrument24 {
         continue;
       }
 
-      if (fm.flags().has(AccessFlag.STATIC)) {
-        String full_name = full_name(classModel, fm);
-        create_get_tag(classGen, fm, static_field_id.get(full_name));
-        create_set_tag(classGen, fm, static_field_id.get(full_name));
-      } else {
-        create_get_tag(classGen, fm, field_to_offset_map.get(fm));
-        create_set_tag(classGen, fm, field_to_offset_map.get(fm));
-      }
+      @SuppressWarnings("nullness:unboxing.of.nullable")
+      int tagOffset =
+          fm.flags().has(AccessFlag.STATIC)
+              ? static_field_id.get(full_name(classModel, fm))
+              : field_to_offset_map.get(fm);
+      create_get_tag(classGen, fm, tagOffset);
+      create_set_tag(classGen, fm, tagOffset);
     }
 
     // Build accessors for each field declared in a superclass that is
@@ -4177,14 +4177,13 @@ public class DCInstrument24 {
         }
 
         field_set.add(fm.fieldName().stringValue());
-        if (fm.flags().has(AccessFlag.STATIC)) {
-          String full_name = full_name(scm, fm);
-          create_get_tag(classGen, fm, static_field_id.get(full_name));
-          create_set_tag(classGen, fm, static_field_id.get(full_name));
-        } else {
-          create_get_tag(classGen, fm, field_to_offset_map.get(fm));
-          create_set_tag(classGen, fm, field_to_offset_map.get(fm));
-        }
+        @SuppressWarnings("nullness:unboxing.of.nullable")
+        int tagOffset =
+            fm.flags().has(AccessFlag.STATIC)
+                ? static_field_id.get(full_name(scm, fm))
+                : field_to_offset_map.get(fm);
+        create_get_tag(classGen, fm, tagOffset);
+        create_set_tag(classGen, fm, tagOffset);
       }
     }
   }
@@ -4632,7 +4631,7 @@ public class DCInstrument24 {
 
     // Add the dcomp marker argument to indicate this is the
     // instrumented version of the method.
-    BcelUtils24.addNewSpecialLocal(mgen, minfo, "marker", dcomp_marker, true);
+    StackMapUtils24.addNewSpecialLocal(mgen, minfo, "marker", dcomp_marker, true);
   }
 
   /**
