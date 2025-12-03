@@ -692,14 +692,18 @@ public class DCInstrument extends InstructionListUtils {
             build_exception_handler(mgen);
             assert stackMapTable != null
                 : "@AssumeAssertion(nullness): checked above and not modified since";
+            assert insertion_placeholder != null : "@AssumeAssertion(nullness): ??";
             instrumentMethod(mgen);
             if (track) {
               assert mi != null : "@AssumeAssertion(nullness): track == true => mi != null";
               add_enter(mgen, mi, DCRuntime.methods.size() - 1);
+              assert tagFrameLocal != null : "@AssumeAssertion(nullness): ??";
               add_exit(mgen, mi, DCRuntime.methods.size() - 1);
             }
             assert global_exception_handler != null
                 : "@AssumeAssertion(nullness): set by build_exception_handler, then preserved";
+            assert stackMapTable != null
+                : "@AssumeAssertion(nullness): checked above and not modified since";
             install_exception_handler(mgen);
           }
 
@@ -982,6 +986,8 @@ public class DCInstrument extends InstructionListUtils {
             // Create the local to store the tag frame for this method
             tagFrameLocal = create_tagFrameLocal(mgen);
             build_exception_handler(mgen);
+            assert insertion_placeholder != null : "@AssumeAssertion(nullness): ??";
+            assert stackMapTable != null : "@AssumeAssertion(nullness): ??";
             instrumentMethod(mgen);
             install_exception_handler(mgen);
           }
@@ -1471,7 +1477,7 @@ public class DCInstrument extends InstructionListUtils {
    * @param method_info_index index for MethodInfo
    * @param enterOrExit the method to invoke: "enter" or "exit"
    * @param line source line number if type is exit
-   * @return InstructionList for the enter or exit code
+   * @return instruction list for the enter or exit code
    */
   @SuppressWarnings("nullness") // calls to side-effecting methods
   @RequiresNonNull("tagFrameLocal")
@@ -2490,13 +2496,14 @@ public class DCInstrument extends InstructionListUtils {
   }
 
   /**
-   * Given a classname return its superclass name. Note that BCEL reports that the superclass of
-   * {@code java.lang.Object} is {@code java.lang.Object} rather than saying there is no superclass.
+   * Given a classname return its superclass name. Note that we copy BCEL and report that the
+   * superclass of {@code java.lang.Object} is {@code java.lang.Object} rather than saying there is
+   * no superclass.
    *
    * @param classname the fully-qualified name of the class in binary form. E.g., "java.util.List"
    * @return name of superclass
    */
-  private @ClassGetName String getSuperclassName(String classname) {
+  private @BinaryName String getSuperclassName(String classname) {
     JavaClass jc = getJavaClass(classname);
     if (jc == null) {
       throw new SuperclassNameError(classname);
@@ -2549,7 +2556,8 @@ public class DCInstrument extends InstructionListUtils {
           return result;
         }
       } catch (Throwable t) {
-        throw new Error("Error reading " + class_url, t);
+        throw new DynCompError(
+            String.format("Error while reading %s %s%n", classname, class_url), t);
       }
     }
     // Do not cache a null result, because a subsequent invocation might return non-null.
@@ -2561,15 +2569,15 @@ public class DCInstrument extends InstructionListUtils {
    *
    * @param methodName method to check
    * @param returnType return type of method
-   * @param args array of parameter types to method
+   * @param paramTypes array of parameter types to method
    * @return true if method is Object.equals()
    */
   @Pure
-  boolean is_object_equals(@Identifier String methodName, Type returnType, Type[] args) {
+  boolean is_object_equals(@Identifier String methodName, Type returnType, Type[] paramTypes) {
     return (methodName.equals("equals")
         && returnType == Type.BOOLEAN
-        && args.length == 1
-        && args[0].equals(javalangObject));
+        && paramTypes.length == 1
+        && paramTypes[0].equals(javalangObject));
   }
 
   /**
@@ -2577,12 +2585,14 @@ public class DCInstrument extends InstructionListUtils {
    *
    * @param methodName method to check
    * @param returnType return type of method
-   * @param args array of parameter types to method
+   * @param paramTypes array of parameter types to method
    * @return true if method is Object.clone()
    */
   @Pure
-  boolean is_object_clone(@Identifier String methodName, Type returnType, Type[] args) {
-    return methodName.equals("clone") && returnType.equals(javalangObject) && (args.length == 0);
+  boolean is_object_clone(@Identifier String methodName, Type returnType, Type[] paramTypes) {
+    return methodName.equals("clone")
+        && returnType.equals(javalangObject)
+        && (paramTypes.length == 0);
   }
 
   /**
@@ -2590,7 +2600,7 @@ public class DCInstrument extends InstructionListUtils {
    * exists, the non-instrumented version if it does not.
    *
    * @param invoke invoke instruction to inspect and replace
-   * @return InstructionList to call the correct version of clone or toString
+   * @return instruction list to call the correct version of clone or toString
    */
   InstructionList instrument_clone_call(InvokeInstruction invoke) {
 
@@ -3222,7 +3232,7 @@ public class DCInstrument extends InstructionListUtils {
    *
    * @param inst instruction to be replaced
    * @param tag_count number of tags to discard
-   * @return InstructionList
+   * @return instruction list to discard tag(s)
    */
   InstructionList discard_tag_code(Instruction inst, int tag_count) {
     InstructionList il = new InstructionList();
