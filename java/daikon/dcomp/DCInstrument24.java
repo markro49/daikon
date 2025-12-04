@@ -2817,7 +2817,7 @@ public class DCInstrument24 {
             }
 
             // Method not found; perhaps inherited from superclass.
-            if (targetClassname == null || targetClassname.equals("java.lang.Object")) {
+            if (targetClassname.equals("java.lang.Object")) {
               // The target class was Object; the search completed without finding a matching
               // method.
               if (debugHandleInvoke) {
@@ -2989,10 +2989,10 @@ public class DCInstrument24 {
    */
   public List<@BinaryName String> getStrictSuperClassNames() {
     final List<@BinaryName String> allSuperClassNames = new ArrayList<>();
-    @BinaryName String classname = getSuperclassName(classGen.getClassName());
-    while (classname != null) {
-      allSuperClassNames.add(classname);
+    @BinaryName String classname = classGen.getClassName();
+    while (!classname.equals("java.lang.Object")) {
       classname = getSuperclassName(classname);
+      allSuperClassNames.add(classname);
     }
     return allSuperClassNames;
   }
