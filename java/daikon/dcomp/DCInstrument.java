@@ -692,7 +692,6 @@ public class DCInstrument extends InstructionListUtils {
             build_exception_handler(mgen);
             assert stackMapTable != null
                 : "@AssumeAssertion(nullness): checked above and not modified since";
-            assert insertion_placeholder != null : "@AssumeAssertion(nullness): ??";
             assert tagFrameLocal != null
                 : "@AssumeAssertion(nullness) set above and not modified by"
                     + " build_exception_handler";
@@ -992,7 +991,6 @@ public class DCInstrument extends InstructionListUtils {
             // Create the local to store the tag frame for this method
             tagFrameLocal = create_tagFrameLocal(mgen);
             build_exception_handler(mgen);
-            assert insertion_placeholder != null : "@AssumeAssertion(nullness): ??";
             assert stackMapTable != null : "@AssumeAssertion(nullness): ??";
             assert tagFrameLocal != null
                 : "@AssumeAssertion(nullness): set above and not modified by"
@@ -1108,7 +1106,8 @@ public class DCInstrument extends InstructionListUtils {
    *
    * @param mgen MethodGen for the method to be instrumented
    */
-  @RequiresNonNull({"stackMapTable", "tagFrameLocal", "insertion_placeholder"})
+  @RequiresNonNull({"stackMapTable", "tagFrameLocal"})
+  @EnsuresNonNull("insertion_placeholder")
   public void instrumentMethod(MethodGen mgen) {
 
     // Because the tagFrameLocal is active for the entire method
