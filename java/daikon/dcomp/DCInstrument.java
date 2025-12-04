@@ -3866,6 +3866,9 @@ public class DCInstrument extends InstructionListUtils {
     } catch (Exception e) {
       throw new Error("can't get superclass for " + jc, e);
     }
+    if (jc == null) {
+      throw new Error("null superclass for " + jc);
+    }
     Map<Field, Integer> field_to_offset_map = build_field_to_offset_map(super_jc);
     int offset = field_to_offset_map.size();
 
