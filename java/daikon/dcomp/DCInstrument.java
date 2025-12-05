@@ -705,8 +705,6 @@ public class DCInstrument extends InstructionListUtils {
               assert tagFrameLocal != null : "@AssumeAssertion(nullness): ??";
               add_exit(mgen, mi, DCRuntime.methods.size() - 1);
             }
-            assert global_exception_handler != null
-                : "@AssumeAssertion(nullness): set by build_exception_handler, then preserved";
             assert this.stackMapTable != null
                 : "@AssumeAssertion(nullness): checked above and not modified since";
             install_exception_handler(mgen);
@@ -996,7 +994,6 @@ public class DCInstrument extends InstructionListUtils {
                 : "@AssumeAssertion(nullness): set above and not modified by"
                     + " build_exception_handler";
             instrumentMethod(mgen);
-            assert global_exception_handler != null : "@AssumeAssertion(nullness): ??";
             assert stackMapTable != null : "@AssumeAssertion(nullness): ??";
             install_exception_handler(mgen);
           }
@@ -1214,8 +1211,6 @@ public class DCInstrument extends InstructionListUtils {
    * Adds a try/catch block around the entire method. If an exception occurs, the tag stack is
    * cleaned up and the exception is rethrown.
    */
-  @SuppressWarnings("nullness:contracts.postcondition") // exception for `main()`
-  @EnsuresNonNull("global_exception_handler")
   public void build_exception_handler(MethodGen mgen) {
 
     if (mgen.getName().equals("main")) {
@@ -1235,8 +1230,6 @@ public class DCInstrument extends InstructionListUtils {
   }
 
   /** Adds a try/catch block around the entire method. */
-  @SuppressWarnings("nullness:contracts.postcondition") // exception for `main()`
-  @EnsuresNonNull("global_exception_handler")
   public void add_exception_handler(MethodGen mgen, InstructionList catch_il) {
 
     // <init> methods (constructors) are problematic
@@ -1267,12 +1260,14 @@ public class DCInstrument extends InstructionListUtils {
 
   /** Adds a try/catch block around the entire method. */
   @SuppressWarnings("nullness") // calls to side-effecting methods
-  @RequiresNonNull({"global_exception_handler", "stackMapTable"})
+  @RequiresNonNull({"stackMapTable"})
   public void install_exception_handler(MethodGen mgen) {
 
     if (global_catch_il == null) {
       return;
     }
+
+    assert global_exception_handler != null : "@AssumeAssertion(nullness): ??";
 
     InstructionList cur_il = mgen.getInstructionList();
     InstructionHandle start = global_exception_handler.getStartPC();
