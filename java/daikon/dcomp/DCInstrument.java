@@ -499,17 +499,19 @@ public class DCInstrument extends InstructionListUtils {
   protected static boolean junit_parse_seen = false;
 
   /**
-   * Map from each static field name to its unique integer id. Note that while it's intuitive to
-   * think that each static should show up exactly once, that is not the case. A static defined in a
-   * superclass can be accessed through each of its subclasses. Tag accessor methods must be added
-   * in each subclass and each should return the same id. We thus will lookup the same name multiple
-   * times.
+   * Map from each static qualified field name to a unique integer id. Note that while it's
+   * intuitive to think that each static should show up exactly once, that is not always true. A
+   * static defined in a superclass can be accessed through each of its subclasses. In this case,
+   * tag accessor methods must be added in each subclass and each should return the id of the field
+   * in the superclass. This map is populated in {@link build_field_to_offset_map} and used in
+   * {@link create_tag_accessors}.
    */
   static Map<String, Integer> static_field_id = new LinkedHashMap<>();
 
   /**
-   * Map from class name to its access_flags. Used to cache the results of the lookup done in {@link
-   * #getAccessFlags}. If a class is marked ACC_ANNOTATION then it will not have been instrumented.
+   * Map from binary class name to its access_flags. Used to cache the results of the lookup done in
+   * {@link #getAccessFlags}. If a class is marked ACC_ANNOTATION then it will not have been
+   * instrumented.
    */
   static Map<String, Integer> accessFlags = new HashMap<>();
 
@@ -1078,18 +1080,18 @@ public class DCInstrument extends InstructionListUtils {
   }
 
   /**
-   * Returns true if the specified classname.method_name is the root of JUnit startup code.
+   * Returns true if the specified classname.methodName is the root of JUnit startup code.
    *
    * @param classname class containing the given method
-   * @param method_name method to be checked
+   * @param methodName method to be checked
    * @return true if the given method is a JUnit trigger
    */
-  boolean isJunitTrigger(String classname, @Identifier String method_name) {
-    if (classname.contains("JUnitCommandLineParseResult") && method_name.equals("parse")) {
+  boolean isJunitTrigger(String classname, @Identifier String methodName) {
+    if (classname.contains("JUnitCommandLineParseResult") && methodName.equals("parse")) {
       // JUnit 4
       return true;
     }
-    if (classname.contains("EngineDiscoveryRequestResolution") && method_name.equals("resolve")) {
+    if (classname.contains("EngineDiscoveryRequestResolution") && methodName.equals("resolve")) {
       // JUnit 5
       return true;
     }
@@ -1683,11 +1685,8 @@ public class DCInstrument extends InstructionListUtils {
 
     Type paramTypes[] = mgen.getArgumentTypes();
 
-    // Determine the offset of the first argument in the frame
-    int offset = 1;
-    if (mgen.isStatic()) {
-      offset = 0;
-    }
+    // Determine the offset of the first argument in the frame.
+    int offset = mgen.isStatic() ? 0 : 1;
 
     // allocate an extra slot to save the tag frame depth for debugging
     int frame_size = mgen.getMaxLocals() + 1;
@@ -1751,11 +1750,8 @@ public class DCInstrument extends InstructionListUtils {
       il.append(InstructionFactory.createLoad(CD_Object, 0));
     }
 
-    // Determine the offset of the first parameter
-    int param_offset = 1;
-    if (mgen.isStatic()) {
-      param_offset = 0;
-    }
+    // The offset of the first parameter.
+    int param_offset = mgen.isStatic() ? 0 : 1;
 
     // Push the MethodInfo index
     il.append(ifact.createConstant(method_info_index));
@@ -2409,7 +2405,7 @@ public class DCInstrument extends InstructionListUtils {
   }
 
   /**
-   * Returns instructions that will discard any primitive tags corresponding to the specified
+   * Returns instructions that will discard (pop) any primitive tags corresponding to the specified
    * parameters. Returns an empty instruction list if there are no primitive arguments to discard.
    *
    * @param paramTypes parameter types of target method
@@ -2889,25 +2885,25 @@ public class DCInstrument extends InstructionListUtils {
 
   /**
    * Create the instructions that replace the object eq or ne branch instruction. They are replaced
-   * by a call to the specified compare_method (which returns a boolean) followed by the specified
+   * by a call to the specified compareMethod (which returns a boolean) followed by the specified
    * boolean ifeq or ifne instruction.
    */
   InstructionList object_comparison(
-      BranchInstruction branch, String compare_method, short boolean_if) {
+      BranchInstruction branch, String compareMethod, short boolean_if) {
 
     InstructionList il = new InstructionList();
     il.append(
         ifact.createInvoke(
-            dcompRuntimeClassName, compare_method, CD_boolean, objectObjectSig, INVOKESTATIC));
+            dcompRuntimeClassName, compareMethod, CD_boolean, objectObjectSig, INVOKESTATIC));
     assert branch.getTarget() != null;
     il.append(InstructionFactory.createBranchInstruction(boolean_if, branch.getTarget()));
     return il;
   }
 
   /**
-   * Handles load and store field instructions. The instructions must be augmented to either push
-   * (load) or pop (store) the tag on the tag stack. This is accomplished by calling the tag get/set
-   * method for this field.
+   * Handles load and store field instructions. If the field is a primitive the instructions must be
+   * augmented to either push (load) or pop (store) the tag on the tag stack. This is accomplished
+   * by calling the tag get/set method for this field.
    */
   @Nullable InstructionList load_store_field(MethodGen mgen, FieldInstruction fi) {
 
@@ -3536,10 +3532,13 @@ public class DCInstrument extends InstructionListUtils {
         op = "dup";
       }
     } else if (is_primitive(top)) {
-      if (is_primitive(stack.peek(1)) && is_primitive(stack.peek(2))) op = "dup2_x1";
-      else if (is_primitive(stack.peek(1))) op = "dup2";
-      else if (is_primitive(stack.peek(2))) op = "dup_x1";
-      else {
+      if (is_primitive(stack.peek(1)) && is_primitive(stack.peek(2))) {
+        op = "dup2_x1";
+      } else if (is_primitive(stack.peek(1))) {
+        op = "dup2";
+      } else if (is_primitive(stack.peek(2))) {
+        op = "dup_x1";
+      } else {
         // neither value 1 nor value 2 is primitive
         op = "dup";
       }
@@ -3568,9 +3567,11 @@ public class DCInstrument extends InstructionListUtils {
     String op;
     if (is_category2(top)) {
       op = "dup";
-    } else if (is_primitive(top) && is_primitive(stack.peek(1))) op = "dup2";
-    else if (is_primitive(top) || is_primitive(stack.peek(1))) op = "dup";
-    else {
+    } else if (is_primitive(top) && is_primitive(stack.peek(1))) {
+      op = "dup2";
+    } else if (is_primitive(top) || is_primitive(stack.peek(1))) {
+      op = "dup";
+    } else {
       // both of the top two items are not primitive, nothing to dup
       return null;
     }
@@ -3590,10 +3591,13 @@ public class DCInstrument extends InstructionListUtils {
       return null;
     }
     String op;
-    if (is_category2(stack.peek(1))) op = "dup_x1";
-    else if (is_primitive(stack.peek(1)) && is_primitive(stack.peek(2))) op = "dup_x2";
-    else if (is_primitive(stack.peek(1)) || is_primitive(stack.peek(2))) op = "dup_x1";
-    else {
+    if (is_category2(stack.peek(1))) {
+      op = "dup_x1";
+    } else if (is_primitive(stack.peek(1)) && is_primitive(stack.peek(2))) {
+      op = "dup_x2";
+    } else if (is_primitive(stack.peek(1)) || is_primitive(stack.peek(2))) {
+      op = "dup_x1";
+    } else {
       op = "dup";
     }
     if (debug_dup.enabled) {
@@ -3609,10 +3613,13 @@ public class DCInstrument extends InstructionListUtils {
     Type top = stack.peek();
     String op;
     if (is_category2(top)) {
-      if (is_category2(stack.peek(1))) op = "dup_x1";
-      else if (is_primitive(stack.peek(1)) && is_primitive(stack.peek(2))) op = "dup_x2";
-      else if (is_primitive(stack.peek(1)) || is_primitive(stack.peek(2))) op = "dup_x1";
-      else {
+      if (is_category2(stack.peek(1))) {
+        op = "dup_x1";
+      } else if (is_primitive(stack.peek(1)) && is_primitive(stack.peek(2))) {
+        op = "dup_x2";
+      } else if (is_primitive(stack.peek(1)) || is_primitive(stack.peek(2))) {
+        op = "dup_x1";
+      } else {
         // both values are references
         op = "dup";
       }
@@ -3626,16 +3633,20 @@ public class DCInstrument extends InstructionListUtils {
           op = "dup_x1";
         }
       } else if (is_primitive(stack.peek(1))) {
-        if (is_primitive(stack.peek(2)) && is_primitive(stack.peek(3))) op = "dup2_x2";
-        else if (is_primitive(stack.peek(2)) || is_primitive(stack.peek(3))) op = "dup2_x1";
-        else {
+        if (is_primitive(stack.peek(2)) && is_primitive(stack.peek(3))) {
+          op = "dup2_x2";
+        } else if (is_primitive(stack.peek(2)) || is_primitive(stack.peek(3))) {
+          op = "dup2_x1";
+        } else {
           // both 2 and 3 are references
           op = "dup2";
         }
       } else { // 1 is a reference
-        if (is_primitive(stack.peek(2)) && is_primitive(stack.peek(3))) op = "dup_x2";
-        else if (is_primitive(stack.peek(2)) || is_primitive(stack.peek(3))) op = "dup_x1";
-        else {
+        if (is_primitive(stack.peek(2)) && is_primitive(stack.peek(3))) {
+          op = "dup_x2";
+        } else if (is_primitive(stack.peek(2)) || is_primitive(stack.peek(3))) {
+          op = "dup_x1";
+        } else {
           // both 2 and 3 are references
           op = "dup";
         }
@@ -3650,9 +3661,11 @@ public class DCInstrument extends InstructionListUtils {
           return null; // nothing to dup
         }
       } else if (is_primitive(stack.peek(1))) {
-        if (is_primitive(stack.peek(2)) && is_primitive(stack.peek(3))) op = "dup_x2";
-        else if (is_primitive(stack.peek(2)) || is_primitive(stack.peek(3))) op = "dup_x1";
-        else {
+        if (is_primitive(stack.peek(2)) && is_primitive(stack.peek(3))) {
+          op = "dup_x2";
+        } else if (is_primitive(stack.peek(2)) || is_primitive(stack.peek(3))) {
+          op = "dup_x1";
+        } else {
           // both 2 and 3 are references
           op = "dup";
         }
