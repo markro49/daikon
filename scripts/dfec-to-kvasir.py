@@ -486,8 +486,6 @@ kvasir_ppt_names = [
 ]
 
 
-#
-
 output_no_comp_decls_f.write("VarComparability\nnone\n\n")
 
 
