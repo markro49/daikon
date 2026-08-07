@@ -1085,6 +1085,45 @@ public final class DCRuntime implements ComparabilityProvider {
   }
 
   /**
+   * Execute a bastore instruction whose array type the instrumenter could not determine, and
+   * manipulate the tags accordingly. The tag at the top of stack is stored into the tag storage for
+   * the array.
+   *
+   * <p>The JVM uses bastore for both boolean and byte data types, and {@link #bastore} and {@link
+   * #zastore} declare the array parameter as {@code byte[]} and {@code boolean[]} respectively.
+   * When the instrumenter cannot tell which of the two the array is (which happens when the operand
+   * stack simulation determined that the array reference is null), it emits a call to this routine,
+   * whose {@code Object} array parameter accepts either one. This routine then distinguishes the
+   * two by the array's run-time type.
+   *
+   * @param arr the array being stored into; a {@code byte[]} or a {@code boolean[]}
+   * @param index the index of the array element being stored into
+   * @param val the value to store
+   */
+  public static void bzastore(Object arr, int index, int val) {
+
+    if (arr instanceof boolean[]) {
+      boolean[] zarr = (boolean[]) arr;
+
+      // Store the tag for val in the tag storage for array and mark
+      // the array and the index as comparable.
+      primitive_array_store(arr, zarr.length, index);
+
+      // Execute the array store
+      zarr[index] = (val != 0);
+    } else {
+      byte[] barr = (byte[]) arr;
+
+      // Store the tag for val in the tag storage for array and mark
+      // the array and the index as comparable.
+      primitive_array_store(arr, barr.length, index);
+
+      // Execute the array store
+      barr[index] = (byte) val;
+    }
+  }
+
+  /**
    * Execute a castore instruction and manipulate the tags accordingly. The tag at the top of stack
    * is stored into the tag storage for the array.
    */

@@ -2620,11 +2620,18 @@ public class DCInstrument24 {
             // The JVM uses bastore for both byte and boolean.
             // We need to differentiate.
             ClassDesc arrayref = stack.peek(2);
-            ClassDesc ct = arrayref.componentType();
+            ClassDesc ct = (arrayref == null) ? null : arrayref.componentType();
             if (ct == null) {
-              throw new Error("stack item not an arrayref: " + inst);
-            }
-            if (ct.equals(CD_boolean)) {
+              // The operand stack simulation does not know the array's element type: the
+              // arrayref is the null sentinel (CalcStack24.NULL_CD) or is unknown, because the
+              // simulated path assigned null to the array.  The array's run-time type may be
+              // either byte[] or boolean[], so pass it as an Object and let the runtime
+              // distinguish the two.  (Passing it as byte[] or as boolean[] would fail
+              // verification if the other one is the run-time type.)
+              List<CodeElement> il = new ArrayList<>();
+              il.add(dcr_call("bzastore", CD_void, new ClassDesc[] {CD_Object, CD_int, CD_int}));
+              return il;
+            } else if (ct.equals(CD_boolean)) {
               return array_store(inst, "zastore", CD_boolean);
             } else {
               return array_store(inst, "bastore", CD_byte);

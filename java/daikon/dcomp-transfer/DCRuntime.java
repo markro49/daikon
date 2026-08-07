@@ -100,6 +100,10 @@ public final class DCRuntime {
     daikon.dcomp.DCRuntime.zastore(arr, index, val);
   }
 
+  public static void bzastore(Object arr, int index, int val) {
+    daikon.dcomp.DCRuntime.bzastore(arr, index, val);
+  }
+
   public static void castore(char[] arr, int index, char val) {
     daikon.dcomp.DCRuntime.castore(arr, index, val);
   }

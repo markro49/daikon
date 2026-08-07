@@ -315,6 +315,8 @@ class DcompTest {
   public static class Arr {
 
     int[] big_arr = new int[90000];
+    byte[] byte_arr = new byte[10];
+    boolean[] boolean_arr = new boolean[10];
     int val = 3;
 
     public Arr() {
@@ -323,6 +325,35 @@ class DcompTest {
 
     public void tryit(int val1) {
       big_arr[71] = val1;
+    }
+
+    /**
+     * The JVM uses the bastore instruction for both byte arrays and boolean arrays. Because {@code
+     * arr} is assigned null on one path, DynComp's operand stack simulation cannot determine which
+     * of the two {@code arr} is. DynComp must still instrument the bastore instruction rather than
+     * abandoning instrumentation of the whole class.
+     *
+     * @param flag if true, throw a NullPointerException
+     */
+    public void byte_store(boolean flag) {
+      byte[] arr = byte_arr;
+      if (flag) {
+        arr = null;
+      }
+      arr[0] = 1;
+    }
+
+    /**
+     * Like {@link #byte_store}, but for a boolean array.
+     *
+     * @param flag if true, throw a NullPointerException
+     */
+    public void boolean_store(boolean flag) {
+      boolean[] arr = boolean_arr;
+      if (flag) {
+        arr = null;
+      }
+      arr[0] = true;
     }
   }
 
@@ -388,6 +419,8 @@ class DcompTest {
     if (true) {
       Arr arr = new Arr();
       arr.tryit(17);
+      arr.byte_store(false);
+      arr.boolean_store(false);
     }
 
     if (true) {

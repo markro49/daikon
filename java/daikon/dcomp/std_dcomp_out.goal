@@ -331,15 +331,65 @@ Variable sets for daikon.dcomp.DcompTest$Arr.<init>() exit
   [1] [daikon.chicory.ThisObjInfo:this]
   [1] [daikon.chicory.FieldInfo:this.big_arr]
   [2] [daikon.chicory.ArrayInfo:this.big_arr[..], daikon.chicory.FieldInfo:this.val]
+  [1] [daikon.chicory.FieldInfo:this.boolean_arr]
+  [1] [daikon.chicory.ArrayInfo:this.boolean_arr[..]]
+  [1] [daikon.chicory.FieldInfo:this.byte_arr]
+  [1] [daikon.chicory.ArrayInfo:this.byte_arr[..]]
 
 Variable sets for daikon.dcomp.DcompTest$Arr.tryit(int val1) enter
   [1] [daikon.chicory.ThisObjInfo:this]
   [1] [daikon.chicory.FieldInfo:this.big_arr]
   [3] [daikon.chicory.ArrayInfo:this.big_arr[..], daikon.chicory.FieldInfo:this.val, daikon.chicory.ParameterInfo:val1]
+  [1] [daikon.chicory.FieldInfo:this.boolean_arr]
+  [1] [daikon.chicory.ArrayInfo:this.boolean_arr[..]]
+  [1] [daikon.chicory.FieldInfo:this.byte_arr]
+  [1] [daikon.chicory.ArrayInfo:this.byte_arr[..]]
 Variable sets for daikon.dcomp.DcompTest$Arr.tryit(int val1) exit
   [1] [daikon.chicory.ThisObjInfo:this]
   [1] [daikon.chicory.FieldInfo:this.big_arr]
   [3] [daikon.chicory.ArrayInfo:this.big_arr[..], daikon.chicory.FieldInfo:this.val, daikon.chicory.ParameterInfo:val1]
+  [1] [daikon.chicory.FieldInfo:this.boolean_arr]
+  [1] [daikon.chicory.ArrayInfo:this.boolean_arr[..]]
+  [1] [daikon.chicory.FieldInfo:this.byte_arr]
+  [1] [daikon.chicory.ArrayInfo:this.byte_arr[..]]
+
+Variable sets for daikon.dcomp.DcompTest$Arr.byte_store(boolean flag) enter
+  [1] [daikon.chicory.ParameterInfo:flag]
+  [1] [daikon.chicory.ThisObjInfo:this]
+  [1] [daikon.chicory.FieldInfo:this.big_arr]
+  [2] [daikon.chicory.ArrayInfo:this.big_arr[..], daikon.chicory.FieldInfo:this.val]
+  [1] [daikon.chicory.FieldInfo:this.boolean_arr]
+  [1] [daikon.chicory.ArrayInfo:this.boolean_arr[..]]
+  [1] [daikon.chicory.FieldInfo:this.byte_arr]
+  [1] [daikon.chicory.ArrayInfo:this.byte_arr[..]]
+Variable sets for daikon.dcomp.DcompTest$Arr.byte_store(boolean flag) exit
+  [1] [daikon.chicory.ParameterInfo:flag]
+  [1] [daikon.chicory.ThisObjInfo:this]
+  [1] [daikon.chicory.FieldInfo:this.big_arr]
+  [2] [daikon.chicory.ArrayInfo:this.big_arr[..], daikon.chicory.FieldInfo:this.val]
+  [1] [daikon.chicory.FieldInfo:this.boolean_arr]
+  [1] [daikon.chicory.ArrayInfo:this.boolean_arr[..]]
+  [1] [daikon.chicory.FieldInfo:this.byte_arr]
+  [1] [daikon.chicory.ArrayInfo:this.byte_arr[..]]
+
+Variable sets for daikon.dcomp.DcompTest$Arr.boolean_store(boolean flag) enter
+  [1] [daikon.chicory.ParameterInfo:flag]
+  [1] [daikon.chicory.ThisObjInfo:this]
+  [1] [daikon.chicory.FieldInfo:this.big_arr]
+  [2] [daikon.chicory.ArrayInfo:this.big_arr[..], daikon.chicory.FieldInfo:this.val]
+  [1] [daikon.chicory.FieldInfo:this.boolean_arr]
+  [1] [daikon.chicory.ArrayInfo:this.boolean_arr[..]]
+  [1] [daikon.chicory.FieldInfo:this.byte_arr]
+  [1] [daikon.chicory.ArrayInfo:this.byte_arr[..]]
+Variable sets for daikon.dcomp.DcompTest$Arr.boolean_store(boolean flag) exit
+  [1] [daikon.chicory.ParameterInfo:flag]
+  [1] [daikon.chicory.ThisObjInfo:this]
+  [1] [daikon.chicory.FieldInfo:this.big_arr]
+  [2] [daikon.chicory.ArrayInfo:this.big_arr[..], daikon.chicory.FieldInfo:this.val]
+  [1] [daikon.chicory.FieldInfo:this.boolean_arr]
+  [1] [daikon.chicory.ArrayInfo:this.boolean_arr[..]]
+  [1] [daikon.chicory.FieldInfo:this.byte_arr]
+  [1] [daikon.chicory.ArrayInfo:this.byte_arr[..]]
 
 Variable sets for daikon.dcomp.DcompTest$Arr.equals(java.lang.Object obj) enter
   [1] [daikon.chicory.ParameterInfo:obj]
@@ -347,6 +397,10 @@ Variable sets for daikon.dcomp.DcompTest$Arr.equals(java.lang.Object obj) enter
   [1] [daikon.chicory.ThisObjInfo:this]
   [1] [daikon.chicory.FieldInfo:this.big_arr]
   [2] [daikon.chicory.ArrayInfo:this.big_arr[..], daikon.chicory.FieldInfo:this.val]
+  [1] [daikon.chicory.FieldInfo:this.boolean_arr]
+  [1] [daikon.chicory.ArrayInfo:this.boolean_arr[..]]
+  [1] [daikon.chicory.FieldInfo:this.byte_arr]
+  [1] [daikon.chicory.ArrayInfo:this.byte_arr[..]]
 Variable sets for daikon.dcomp.DcompTest$Arr.equals(java.lang.Object obj) exit
   [1] [daikon.chicory.ParameterInfo:obj]
   [1] [daikon.chicory.DaikonClassInfo:obj.getClass().getName()]
@@ -354,6 +408,10 @@ Variable sets for daikon.dcomp.DcompTest$Arr.equals(java.lang.Object obj) exit
   [1] [daikon.chicory.ThisObjInfo:this]
   [1] [daikon.chicory.FieldInfo:this.big_arr]
   [2] [daikon.chicory.ArrayInfo:this.big_arr[..], daikon.chicory.FieldInfo:this.val]
+  [1] [daikon.chicory.FieldInfo:this.boolean_arr]
+  [1] [daikon.chicory.ArrayInfo:this.boolean_arr[..]]
+  [1] [daikon.chicory.FieldInfo:this.byte_arr]
+  [1] [daikon.chicory.ArrayInfo:this.byte_arr[..]]
 
 Variable sets for daikon.dcomp.DcompTest$C.<init>(java.lang.String id) enter
   [1] [daikon.chicory.ParameterInfo:id]
