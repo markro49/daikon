@@ -8,8 +8,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
-import java.lang.classfile.constantpool.ClassEntry;
-import java.lang.classfile.constantpool.PoolEntry;
+import java.lang.classfile.CodeElement;
+import java.lang.classfile.CodeModel;
+import java.lang.classfile.MethodModel;
+import java.lang.classfile.instruction.InvokeInstruction;
 import java.util.HashSet;
 import java.util.Set;
 import org.checkerframework.checker.signature.qual.BinaryName;
@@ -72,13 +74,13 @@ public final class DCInstrumentTest24 {
       Premain.jdk_instrumented = savedJdkInstrumented;
       DCRuntime.instrumentation_interface = savedInstrumentationInterface;
     }
-    Set<String> referenced = referencedClasses(instrumented);
+    Set<String> invoked = invokedClasses(instrumented);
     assertTrue(
-        "instrumented class does not reference java/lang/DCRuntime: " + referenced,
-        referenced.contains("java/lang/DCRuntime"));
+        "instrumented class does not call java/lang/DCRuntime: " + invoked,
+        invoked.contains("java/lang/DCRuntime"));
     assertFalse(
-        "instrumented class references daikon/dcomp/DCRuntime: " + referenced,
-        referenced.contains("daikon/dcomp/DCRuntime"));
+        "instrumented class calls daikon/dcomp/DCRuntime: " + invoked,
+        invoked.contains("daikon/dcomp/DCRuntime"));
   }
 
   /**
@@ -111,20 +113,34 @@ public final class DCInstrumentTest24 {
   }
 
   /**
-   * Returns the names, in internal form, of all the classes in the constant pool of the given class
-   * file.
+   * Returns the names, in internal form, of the classes that the methods of the given class file
+   * invoke a method of. Unlike the constant pool, this contains only classes that the code actually
+   * calls.
    *
    * @param classBytes the bytes of a class file
-   * @return the internal names of the classes that {@code classBytes} references
+   * @return the internal names of the classes whose methods {@code classBytes} invokes
    */
-  private Set<String> referencedClasses(byte[] classBytes) {
+  private Set<String> invokedClasses(byte[] classBytes) {
     Set<String> result = new HashSet<>();
     ClassModel classModel = ClassFile.of().parse(classBytes);
-    for (PoolEntry entry : classModel.constantPool()) {
-      if (entry instanceof ClassEntry ce) {
-        result.add(ce.asInternalName());
-      }
+    for (MethodModel method : classModel.methods()) {
+      method.code().ifPresent(code -> addInvokedClasses(code, result));
     }
     return result;
+  }
+
+  /**
+   * Adds, to {@code result}, the internal name of the owner of each invocation instruction in the
+   * given method body.
+   *
+   * @param code the body of a method
+   * @param result the set to add to; is side-effected by this method
+   */
+  private void addInvokedClasses(CodeModel code, Set<String> result) {
+    for (CodeElement element : code) {
+      if (element instanceof InvokeInstruction invoke) {
+        result.add(invoke.owner().asInternalName());
+      }
+    }
   }
 }
