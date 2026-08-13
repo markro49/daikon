@@ -22,6 +22,7 @@ import java.lang.constant.ConstantDescs;
 import java.lang.constant.MethodTypeDesc;
 import java.lang.instrument.IllegalClassFormatException;
 import java.lang.reflect.Field;
+import org.checkerframework.checker.interning.qual.Interned;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.checker.signature.qual.InternalForm;
 import org.junit.AfterClass;
@@ -91,7 +92,7 @@ public class TagFrameTest24 {
   private static boolean savedJdkInstrumented;
 
   /** The value of {@code DCRuntime.instrumentation_interface} before this test class ran. */
-  private static @Nullable Object savedInstrumentationInterface;
+  private static @Nullable @Interned String savedInstrumentationInterface;
 
   /**
    * Instruments for an uninstrumented JDK, so that the references that DCInstrument24 emits to
@@ -101,11 +102,13 @@ public class TagFrameTest24 {
    *
    * @throws ReflectiveOperationException if the fields do not exist
    */
+  @SuppressWarnings("interning:cast.unsafe") // field is interned
   @BeforeClass
   public static void useUninstrumentedJdk() throws ReflectiveOperationException {
     Field jdkInstrumented = dcompField("Premain", "jdk_instrumented");
     savedJdkInstrumented = jdkInstrumented.getBoolean(null);
-    savedInstrumentationInterface = dcompField("DCRuntime", "instrumentation_interface").get(null);
+    savedInstrumentationInterface =
+        (@Interned String) dcompField("DCRuntime", "instrumentation_interface").get(null);
     jdkInstrumented.setBoolean(null, false);
   }
 
@@ -132,6 +135,7 @@ public class TagFrameTest24 {
    */
   private static Field dcompField(String className, String fieldName)
       throws ReflectiveOperationException {
+    @SuppressWarnings("signature:argument") // string concatenation
     Field field = Class.forName("daikon.dcomp." + className).getDeclaredField(fieldName);
     field.setAccessible(true);
     return field;

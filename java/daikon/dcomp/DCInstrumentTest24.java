@@ -27,6 +27,7 @@ import java.lang.constant.MethodTypeDesc;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.checkerframework.checker.interning.qual.Interned;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.checker.signature.qual.BinaryName;
 import org.junit.Test;
@@ -177,7 +178,7 @@ public final class DCInstrumentTest24 {
   @Test
   public void staleWorklistDoesNotAffectLaterClasses() throws IOException {
     boolean savedJdkInstrumented = Premain.jdk_instrumented;
-    @BinaryName String savedInstrumentationInterface = DCRuntime.instrumentation_interface;
+    @BinaryName @Interned String savedInstrumentationInterface = DCRuntime.instrumentation_interface;
     PrintStream savedOut = System.out;
     PrintStream savedErr = System.err;
     try {
